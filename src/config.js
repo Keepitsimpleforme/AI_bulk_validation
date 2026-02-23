@@ -34,7 +34,9 @@ export const config = {
   /** Hourly publish URL: cumulative validated results for the day (JSON) sent every hour. */
   hourlyPublishUrl: process.env.HOURLY_PUBLISH_URL ?? "",
   hourlyPublishTimeoutMs: toNumber(process.env.HOURLY_PUBLISH_TIMEOUT_MS, 30000),
-  /** Main use-case app: CSV with full column set sent every hour. POST body = CSV, Content-Type: text/csv. */
+  /** Main app: same as dashboard — PUT with { data: [ { GTIN_number, Status, Reason, Date } ] }. Sent every hour if set. */
+  mainAppPublishUrl: process.env.MAIN_APP_PUBLISH_URL ?? "",
+  /** Main use-case app: CSV with full column set sent every hour. POST body = CSV. Optional; use MAIN_APP_PUBLISH_URL for same format as dashboard. */
   mainAppCsvUrl: process.env.MAIN_APP_CSV_URL ?? "",
   mainAppCsvTimeoutMs: toNumber(process.env.MAIN_APP_CSV_TIMEOUT_MS, 60000),
   /** Base URL for the bulk API (used by scheduler to start runs). In Docker set to http://app:3000 */

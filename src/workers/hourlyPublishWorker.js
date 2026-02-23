@@ -28,10 +28,18 @@ function toHourlyRow(r, dateKey) {
   };
 }
 
+const sendPut = async (url, payload) => {
+  await axios.put(url, payload, {
+    timeout: config.hourlyPublishTimeoutMs,
+    headers: { "Content-Type": "application/json" }
+  });
+};
+
 async function runHourlyPublish() {
-  const url = config.hourlyPublishUrl;
-  if (!url) {
-    logger.debug("HOURLY_PUBLISH_URL not set; skipping hourly publish");
+  const dashboardUrl = config.hourlyPublishUrl;
+  const mainAppUrl = config.mainAppPublishUrl;
+  if (!dashboardUrl && !mainAppUrl) {
+    logger.debug("HOURLY_PUBLISH_URL and MAIN_APP_PUBLISH_URL not set; skipping hourly publish");
     return;
   }
 
@@ -45,18 +53,30 @@ async function runHourlyPublish() {
     return;
   }
 
-  try {
-    await axios.put(url, payload, {
-      timeout: config.hourlyPublishTimeoutMs,
-      headers: { "Content-Type": "application/json" }
-    });
-    logger.info({ dateKey, count: data.length, url }, "hourly publish completed");
-  } catch (err) {
-    logger.error(
-      { err: err.message, status: err.response?.status, dateKey, count: data.length, url },
-      "hourly publish failed"
-    );
-    throw err;
+  if (dashboardUrl) {
+    try {
+      await sendPut(dashboardUrl, payload);
+      logger.info({ dateKey, count: data.length, url: dashboardUrl }, "hourly publish (dashboard) completed");
+    } catch (err) {
+      logger.error(
+        { err: err.message, status: err.response?.status, dateKey, count: data.length, url: dashboardUrl },
+        "hourly publish (dashboard) failed"
+      );
+      throw err;
+    }
+  }
+
+  if (mainAppUrl) {
+    try {
+      await sendPut(mainAppUrl, payload);
+      logger.info({ dateKey, count: data.length, url: mainAppUrl }, "hourly publish (main app) completed");
+    } catch (err) {
+      logger.error(
+        { err: err.message, status: err.response?.status, dateKey, count: data.length, url: mainAppUrl },
+        "hourly publish (main app) failed"
+      );
+      throw err;
+    }
   }
 }
 

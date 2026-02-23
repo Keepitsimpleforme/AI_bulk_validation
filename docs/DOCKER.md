@@ -194,9 +194,30 @@ npm run check:newdata -- <runId>
 
 ---
 
-## Main use-case app (CSV)
+## Main app (same method and payload as dashboard)
 
-To send validated data to your main app as **CSV** (one row per product with the full column set):
+To send validated data to your **main app** using the **same** method and payload as the dashboard:
+
+1. **Config:** In `.env` set the main app endpoint:  
+   `MAIN_APP_PUBLISH_URL=http://host.docker.internal:PORT/your-endpoint`  
+   (Use the same URL pattern as `HOURLY_PUBLISH_URL` if the main app is on the same VM; see “Dashboard on VM”.)
+
+2. **Behaviour:** The **hourly-publish** worker sends the **same** payload to both:
+   - **PUT** to `HOURLY_PUBLISH_URL` (dashboard)
+   - **PUT** to `MAIN_APP_PUBLISH_URL` (main app)  
+   Payload: `{ "data": [ { "GTIN_number", "Status", "Reason", "Date" }, ... ] }` with `Content-Type: application/json`.
+
+3. Your main app endpoint must accept **PUT** and the same JSON body as the dashboard.
+
+4. **Restart:** `docker compose up -d hourly-publish`
+
+No extra container is needed; the same hourly-publish worker sends to both URLs.
+
+---
+
+## Main use-case app (CSV, optional)
+
+To send validated data to your main app as **CSV** (full column set) instead:
 
 1. **Migration:** Run migrations so `validation_results.product_snapshot` exists:  
    `docker compose run --rm migrate`
