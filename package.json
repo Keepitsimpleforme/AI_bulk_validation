@@ -23,6 +23,7 @@
     "monitor:view": "node src/scripts/viewMonitoring.js",
     "check:newdata": "node src/scripts/checkNewData.js",
     "diagnose": "node src/scripts/diagnose.js",
+    "check:gs1": "node src/scripts/checkGs1Api.js",
     "analyze:discrepancy": "node src/scripts/analyzeDiscrepancy.js",
     "compare:queries": "node src/scripts/compareQueries.js",
     "verify:continuous": "node src/scripts/verifyContinuousValidation.js",
