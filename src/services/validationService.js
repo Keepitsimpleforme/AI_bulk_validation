@@ -26,7 +26,8 @@ export const processRawBatch = async (payload) => {
         validationStatus: "Rejected",
         reasons: ["Schema validation failed"],
         schemaValid: false,
-        businessValid: false
+        businessValid: false,
+        productSnapshot: item ?? null
       });
       continue;
     }
@@ -43,7 +44,8 @@ export const processRawBatch = async (payload) => {
       validationStatus: business.status,
       reasons: business.reasons,
       schemaValid: true,
-      businessValid: isAccepted
+      businessValid: isAccepted,
+      productSnapshot: item ?? null
     });
   }
 

@@ -48,6 +48,7 @@ curl -s http://localhost:3000/healthz
 | scheduler           | Starts a run for today every 15 min |
 | report-scheduler    | Run + daily reports every 2 h |
 | hourly-publish      | PUTs cumulative day results every hour |
+| main-app-csv        | POSTs CSV (full column set) to main app every hour |
 
 Compose overrides `DATABASE_URL` and `REDIS_URL` to use the `postgres` and `redis` services. Other vars (e.g. `GS1_TOKEN`, `HOURLY_PUBLISH_URL`) come from `.env`.
 
@@ -190,3 +191,22 @@ npm run check:newdata -- <runId>
 - The **hourly-publish** container PUTs cumulative results to `HOURLY_PUBLISH_URL` every hour. No extra step needed.
 - To test once:  
   `docker compose run --rm hourly-publish`
+
+---
+
+## Main use-case app (CSV)
+
+To send validated data to your main app as **CSV** (one row per product with the full column set):
+
+1. **Migration:** Run migrations so `validation_results.product_snapshot` exists:  
+   `docker compose run --rm migrate`
+
+2. **Config:** In `.env` set the main app’s CSV endpoint:  
+   `MAIN_APP_CSV_URL=http://host.docker.internal:PORT/your-csv-endpoint`
+
+3. **Behaviour:** The **main-app-csv** container runs every hour. It builds a CSV with columns: Company Name, AI Verified Status, AI Verified Reason, GCP, Exempted fields, Category Name, Subcategory Name, Product Name, GTIN, Product Description, Price, Location MRP, Target Market, Country of Origin, Approval Status, Email, Condition, Brand Name, Gross Weight, Gross Weight Unit, Net Content, Net Content Unit, Net Weight, Net Weight Unit, Packaging unit, Packaging type, Product Updated Date, HS Code, Product Status, Product SKU, Product Remarks, Valid From, Valid Till, Product Priority, Product Parent SKU, SGST, IGST, CGST, Primary Depth, Front Image, Back Image, Top Image, Bottom Image, Artwork Front, Artwork Back, Right Image, Left Image, Products Count. Values come from the stored product snapshot (GS1) and validation result; missing fields are empty. It **POST**s the CSV with `Content-Type: text/csv`.
+
+4. **Manual run:**  
+   `docker compose run --rm main-app-csv`
+
+**Note:** Product snapshot is stored only for new validations after the migration; existing rows still get a CSV row with GTIN, AI Verified Status, and AI Verified Reason filled.

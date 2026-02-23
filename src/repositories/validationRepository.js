@@ -7,7 +7,7 @@ export const insertValidationResults = async (records) => {
   const values = [];
   const placeholders = records
     .map((record, index) => {
-      const base = index * 7;
+      const base = index * 8;
       values.push(
         record.runId,
         record.batchId,
@@ -15,14 +15,15 @@ export const insertValidationResults = async (records) => {
         record.validationStatus,
         JSON.stringify(record.reasons ?? []),
         record.schemaValid,
-        record.businessValid
+        record.businessValid,
+        record.productSnapshot != null ? JSON.stringify(record.productSnapshot) : null
       );
-      return `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}::jsonb, $${base + 6}, $${base + 7})`;
+      return `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}::jsonb, $${base + 6}, $${base + 7}, $${base + 8}::jsonb)`;
     })
     .join(", ");
 
   await db.query(
-    `INSERT INTO validation_results(run_id, batch_id, gtin, validation_status, reasons, schema_valid, business_valid)
+    `INSERT INTO validation_results(run_id, batch_id, gtin, validation_status, reasons, schema_valid, business_valid, product_snapshot)
      VALUES ${placeholders}`,
     values
   );
@@ -35,6 +36,21 @@ export const insertValidationResults = async (records) => {
 export const getValidationResultsForDate = async (dateYyyyMmDd) => {
   const result = await db.query(
     `SELECT vr.gtin, vr.validation_status, vr.reasons
+     FROM validation_results vr
+     JOIN runs r ON r.run_id = vr.run_id
+     WHERE DATE(r.start_time AT TIME ZONE 'Asia/Kolkata') = $1::date
+     ORDER BY vr.created_at ASC`,
+    [dateYyyyMmDd]
+  );
+  return result.rows;
+};
+
+/**
+ * Validation results with product_snapshot for main-app CSV export (full column set).
+ */
+export const getValidationResultsForMainAppExport = async (dateYyyyMmDd) => {
+  const result = await db.query(
+    `SELECT vr.gtin, vr.validation_status, vr.reasons, vr.product_snapshot
      FROM validation_results vr
      JOIN runs r ON r.run_id = vr.run_id
      WHERE DATE(r.start_time AT TIME ZONE 'Asia/Kolkata') = $1::date

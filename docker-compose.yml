@@ -157,6 +157,20 @@ services:
         condition: service_healthy
     command: sh -c "while true; do node src/workers/hourlyPublishWorker.js; sleep 3600; done"
 
+  main-app-csv:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://bulk_user:bulk_pass@postgres:5432/bulk_validation
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: sh -c "while true; do node src/workers/mainAppCsvWorker.js; sleep 3600; done"
+
 volumes:
   bulk_postgres_data:
   bulk_redis_data:

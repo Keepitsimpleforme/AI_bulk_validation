@@ -34,6 +34,9 @@ export const config = {
   /** Hourly publish URL: cumulative validated results for the day (JSON) sent every hour. */
   hourlyPublishUrl: process.env.HOURLY_PUBLISH_URL ?? "",
   hourlyPublishTimeoutMs: toNumber(process.env.HOURLY_PUBLISH_TIMEOUT_MS, 30000),
+  /** Main use-case app: CSV with full column set sent every hour. POST body = CSV, Content-Type: text/csv. */
+  mainAppCsvUrl: process.env.MAIN_APP_CSV_URL ?? "",
+  mainAppCsvTimeoutMs: toNumber(process.env.MAIN_APP_CSV_TIMEOUT_MS, 60000),
   /** Base URL for the bulk API (used by scheduler to start runs). In Docker set to http://app:3000 */
   apiBaseUrl: process.env.API_BASE_URL ?? `http://127.0.0.1:${toNumber(process.env.PORT, 3000)}`,
   queue: {
