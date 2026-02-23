@@ -78,9 +78,10 @@ export const rowToMainAppCsvRow = (row) => {
   const mrp = arrFirst(p.mrp) ?? {};
   const reasonStr = Array.isArray(row.reasons) ? row.reasons.join("; ") : String(row.reasons ?? "");
 
+  const status = row.validation_status ?? "";
   return {
     "Company Name": get(p, "company_detail.name"),
-    "AI Verified Status": row.validation_status ?? "",
+    "AI Verified Status": status,
     "AI Verified Reason": reasonStr,
     "GCP": get(p, "gcp"),
     "Exempted fields": get(p, "exempted_fields"),
@@ -126,7 +127,10 @@ export const rowToMainAppCsvRow = (row) => {
     "Artwork Back": get(p, "artwork_back"),
     "Right Image": get(p, "right_image") ?? get(p, "images.right"),
     "Left Image": get(p, "left_image") ?? get(p, "images.left"),
-    "Products Count": get(p, "products_count")
+    "Products Count": get(p, "products_count"),
+    // Legacy keys for dashboard compatibility (same payload for both)
+    GTIN_number: row.gtin ?? "",
+    Status: status
   };
 };
 

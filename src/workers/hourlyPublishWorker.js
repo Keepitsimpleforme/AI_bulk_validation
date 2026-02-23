@@ -1,14 +1,15 @@
 /**
- * Publishes cumulative validated results for the day to an external downstream URL every hour.
- * Payload: all validated rows for today (IST) in format GTIN_number, Status, Reason, Date.
- * Run via PM2 cron (e.g. 0 * * * *) or standalone.
+ * Publishes cumulative validated results for the day to dashboard and main app every hour.
+ * Payload: { data: [ { "Company Name", "AI Verified Status", "AI Verified Reason", "GTIN", ... }, ... ] }
+ * Full column set per row (same for both URLs).
  */
 
 import axios from "axios";
 import { config } from "../config.js";
 import { db } from "../lib/db.js";
 import { logger } from "../lib/logger.js";
-import { getValidationResultsForDate } from "../repositories/validationRepository.js";
+import { getValidationResultsForMainAppExport } from "../repositories/validationRepository.js";
+import { rowToMainAppCsvRow } from "../services/mainAppCsvService.js";
 
 function getTodayIST() {
   const now = new Date();
@@ -17,15 +18,6 @@ function getTodayIST() {
   const m = String(ist.getMonth() + 1).padStart(2, "0");
   const d = String(ist.getDate()).padStart(2, "0");
   return `${y}-${m}-${d}`;
-}
-
-function toHourlyRow(r, dateKey) {
-  return {
-    GTIN_number: r.gtin ?? "",
-    Status: r.validation_status ?? "",
-    Reason: Array.isArray(r.reasons) ? r.reasons.join("; ") : String(r.reasons ?? ""),
-    Date: dateKey
-  };
 }
 
 const sendPut = async (url, payload) => {
@@ -44,8 +36,8 @@ async function runHourlyPublish() {
   }
 
   const dateKey = getTodayIST();
-  const rows = await getValidationResultsForDate(dateKey);
-  const data = rows.map((r) => toHourlyRow(r, dateKey));
+  const rows = await getValidationResultsForMainAppExport(dateKey);
+  const data = rows.map((row) => rowToMainAppCsvRow(row));
   const payload = { data };
 
   if (data.length === 0) {
