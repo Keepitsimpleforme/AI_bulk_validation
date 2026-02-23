@@ -22,6 +22,7 @@
     "monitor:reports": "node src/scripts/monitorWithReports.js",
     "monitor:view": "node src/scripts/viewMonitoring.js",
     "check:newdata": "node src/scripts/checkNewData.js",
+    "diagnose": "node src/scripts/diagnose.js",
     "analyze:discrepancy": "node src/scripts/analyzeDiscrepancy.js",
     "compare:queries": "node src/scripts/compareQueries.js",
     "verify:continuous": "node src/scripts/verifyContinuousValidation.js",

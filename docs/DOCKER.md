@@ -102,3 +102,60 @@ docker compose up -d
 ## Optional: API base URL
 
 The scheduler starts runs by calling the API. In Docker it uses `API_BASE_URL=http://app:3000`. For local runs you can set `API_BASE_URL` in `.env` if the API is on another host/port.
+
+---
+
+## Debugging and getting validated data
+
+To see whether the system is fetching from GS1, validating, and writing to the DB:
+
+**1. Run the diagnostic (DB + queues + config summary)**
+
+```bash
+docker compose run --rm app node src/scripts/diagnose.js
+```
+
+Or locally (with the same `DATABASE_URL` and `REDIS_URL` as the app):
+
+```bash
+npm run diagnose
+```
+
+This prints: latest runs (status, items_fetched, validated_count), validation result count for today, queue depths, and whether `GS1_TOKEN` / URLs are set.
+
+**2. Check logs**
+
+- Scheduler (starts a run for today every 15 min):  
+  `docker compose logs scheduler --tail 30`
+- API + ingestion (fetches from GS1, enqueues batches):  
+  `docker compose logs app --tail 50`
+- Validation worker:  
+  `docker compose logs worker-validation --tail 30`
+
+**3. If there are no runs or you want to force a run**
+
+```bash
+# Replace YYYY-MM-DD with today’s date (e.g. 2026-02-23)
+curl -X POST http://localhost:3000/v1/runs \
+  -H "Content-Type: application/json" \
+  -d '{"status":"pending","from":"YYYY-MM-DD","to":"YYYY-MM-DD","resultPerPage":100}'
+```
+
+Then run `diagnose` again or check a specific run:
+
+```bash
+npm run check:newdata -- <runId>
+```
+
+**4. If a run exists but `items_fetched` stays 0**
+
+- Ingestion is likely failing (e.g. GS1 401). Set a valid `GS1_TOKEN` in `.env` and restart:  
+  `docker compose up -d app`
+- Confirm with app logs:  
+  `docker compose logs app --tail 50`
+
+**5. Once there is validated data for today**
+
+- The **hourly-publish** container PUTs cumulative results to `HOURLY_PUBLISH_URL` every hour. No extra step needed.
+- To test once:  
+  `docker compose run --rm hourly-publish`
