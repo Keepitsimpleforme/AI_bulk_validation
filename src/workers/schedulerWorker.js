@@ -21,7 +21,7 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-const API_BASE = `http://127.0.0.1:${config.port}`;
+const API_BASE = config.apiBaseUrl;
 const SCHEDULE_INTERVAL_MINUTES = parseInt(process.env.SCHEDULE_INTERVAL_MINUTES || "15", 10);
 const MAX_CONCURRENT_RUNS = parseInt(process.env.MAX_CONCURRENT_RUNS || "1", 10);
 

@@ -1,0 +1,12 @@
+node_modules
+.env
+.env.*
+!.env.example
+outputs
+.git
+*.log
+.DS_Store
+README.md
+docs
+scripts/vm
+*.md

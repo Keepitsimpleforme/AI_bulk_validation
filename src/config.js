@@ -33,6 +33,8 @@ export const config = {
   },
   /** Hourly publish URL: cumulative validated results for the day (JSON) sent every hour. */
   hourlyPublishUrl: process.env.HOURLY_PUBLISH_URL ?? "",
+  /** Base URL for the bulk API (used by scheduler to start runs). In Docker set to http://app:3000 */
+  apiBaseUrl: process.env.API_BASE_URL ?? `http://127.0.0.1:${toNumber(process.env.PORT, 3000)}`,
   queue: {
     rawHighWatermark: toNumber(process.env.RAW_QUEUE_HIGH_WATERMARK, 200),
     rawConcurrency: toNumber(process.env.RAW_QUEUE_CONCURRENCY, 5),

@@ -1,6 +1,10 @@
+# Full stack: Postgres, Redis, API, workers. Requires .env (see .env.example).
+# Usage: docker compose up -d && docker compose run --rm migrate
+# Then: docker compose up -d (keeps all running)
+
 services:
   postgres:
-    image: postgres:16
+    image: postgres:16-alpine
     container_name: bulk-postgres
     restart: unless-stopped
     environment:
@@ -18,7 +22,7 @@ services:
       retries: 20
 
   redis:
-    image: redis:7
+    image: redis:7-alpine
     container_name: bulk-redis
     restart: unless-stopped
     ports:
@@ -30,6 +34,126 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+
+  migrate:
+    build: .
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://bulk_user:bulk_pass@postgres:5432/bulk_validation
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: node src/scripts/migrate.js
+    restart: "no"
+
+  app:
+    build: .
+    container_name: bulk-api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgres://bulk_user:bulk_pass@postgres:5432/bulk_validation
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./outputs:/app/outputs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: node src/index.js
+
+  worker-validation:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://bulk_user:bulk_pass@postgres:5432/bulk_validation
+      REDIS_URL: redis://redis:6379
+    volumes:
+      - ./outputs:/app/outputs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: node src/workers/validationWorker.js
+
+  worker-delivery:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://bulk_user:bulk_pass@postgres:5432/bulk_validation
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: node src/workers/deliveryWorker.js
+
+  worker-outbox-replay:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://bulk_user:bulk_pass@postgres:5432/bulk_validation
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: sh -c "while true; do node src/workers/outboxReplayWorker.js; sleep 600; done"
+
+  scheduler:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://bulk_user:bulk_pass@postgres:5432/bulk_validation
+      API_BASE_URL: http://app:3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      app:
+        condition: service_started
+    command: sh -c "while true; do node src/workers/schedulerWorker.js; sleep 900; done"
+
+  report-scheduler:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://bulk_user:bulk_pass@postgres:5432/bulk_validation
+    volumes:
+      - ./outputs:/app/outputs
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: sh -c "while true; do node src/workers/reportSchedulerWorker.js; sleep 7200; done"
+
+  hourly-publish:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://bulk_user:bulk_pass@postgres:5432/bulk_validation
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: sh -c "while true; do node src/workers/hourlyPublishWorker.js; sleep 3600; done"
 
 volumes:
   bulk_postgres_data:
