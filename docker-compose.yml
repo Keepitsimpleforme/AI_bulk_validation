@@ -150,6 +150,8 @@ services:
     environment:
       NODE_ENV: production
       DATABASE_URL: postgres://bulk_user:bulk_pass@postgres:5432/bulk_validation
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       postgres:
         condition: service_healthy

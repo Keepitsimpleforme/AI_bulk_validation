@@ -47,7 +47,7 @@ async function runHourlyPublish() {
 
   try {
     await axios.put(url, payload, {
-      timeout: 30000,
+      timeout: config.hourlyPublishTimeoutMs,
       headers: { "Content-Type": "application/json" }
     });
     logger.info({ dateKey, count: data.length, url }, "hourly publish completed");
