@@ -1,0 +1,36 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: bulk-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: bulk_user
+      POSTGRES_PASSWORD: bulk_pass
+      POSTGRES_DB: bulk_validation
+    ports:
+      - "5432:5432"
+    volumes:
+      - bulk_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bulk_user -d bulk_validation"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7
+    container_name: bulk-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - bulk_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  bulk_postgres_data:
+  bulk_redis_data:
