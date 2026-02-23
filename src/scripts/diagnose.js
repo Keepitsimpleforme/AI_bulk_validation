@@ -7,6 +7,7 @@
 import { db } from "../lib/db.js";
 import { config } from "../config.js";
 import { rawBatchesQueue, validatedBatchesQueue } from "../lib/queues.js";
+import { redisConnection } from "../lib/redis.js";
 
 async function main() {
   const now = new Date();
@@ -102,8 +103,13 @@ async function main() {
     if (!latest) {
       console.log("  1. Start a run: curl -X POST http://localhost:3000/v1/runs -H 'Content-Type: application/json' -d '{\"status\":\"pending\",\"from\":\"" + today + "\",\"to\":\"" + today + "\",\"resultPerPage\":100}'");
       console.log("  2. Or wait for scheduler (every 15 min) to start a run for today.");
-    } else if (latest.status === "RUNNING" && latest.items_fetched === 0) {
-      console.log("  1. Run exists but items_fetched=0. Check GS1_TOKEN and app logs (ingestion may be failing with 401).");
+    } else if (
+      (latest.status === "RUNNING" || latest.status === "PARTIAL_FAILED") &&
+      latest.items_fetched === 0
+    ) {
+      console.log("  1. Ingestion failed (0 items fetched). Check app logs for GS1 errors:");
+      console.log("     docker compose logs app --tail 80");
+      console.log("  2. On VM, ensure GS1_TOKEN in .env is valid and same as local (401 = bad/expired token).");
     } else if (latest.status === "RUNNING" && latest.validated_count === 0 && latest.items_fetched > 0) {
       console.log("  1. Data is being fetched; validation worker should be processing. Check worker-validation logs.");
     } else if (validatedToday > 0) {
@@ -115,6 +121,8 @@ async function main() {
     process.exitCode = 1;
   } finally {
     await db.end();
+    redisConnection.disconnect();
+    process.exit(process.exitCode ?? 0);
   }
 }
 

@@ -99,6 +99,37 @@ docker compose up -d
 
 ---
 
+## Update code on VM from GitHub
+
+After you push changes and want the VM to run the latest code:
+
+```bash
+# 1. Go to project
+cd /root/midas-gs1/AI_Bulk
+
+# 2. Pull latest (use main or your default branch)
+git pull origin main
+
+# 3. Rebuild images so app/workers use new code (optional but recommended after code changes)
+docker compose build
+
+# 4. Run any new migrations (safe to run every time)
+docker compose run --rm migrate
+
+# 5. Restart all services with new images
+docker compose up -d
+```
+
+**One-liner** (from project root):
+
+```bash
+cd /root/midas-gs1/AI_Bulk && git pull origin main && docker compose build && docker compose run --rm migrate && docker compose up -d
+```
+
+If your default branch is `master`, use `git pull origin master` instead of `main`. To only restart without pulling: `docker compose up -d --build`.
+
+---
+
 ## Optional: API base URL
 
 The scheduler starts runs by calling the API. In Docker it uses `API_BASE_URL=http://app:3000`. For local runs you can set `API_BASE_URL` in `.env` if the API is on another host/port.
