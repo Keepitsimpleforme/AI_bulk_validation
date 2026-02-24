@@ -28,7 +28,7 @@ function extractItems(payload) {
   return [];
 }
 
-async function fetchAllGs1Gtins(date, status = "pending") {
+async function fetchAllGs1Gtins(date, status = "pending", debug = false) {
   const gtins = new Set();
   const client = axios.create({
     baseURL: config.gs1.baseUrl,
@@ -57,9 +57,23 @@ async function fetchAllGs1Gtins(date, status = "pending") {
     const pageInfo = payload.pageInfo ?? {};
 
     totalPage = pageInfo.totalPage ?? totalPage;
+
     for (const item of items) {
       const gtin = getGtin(item);
       if (gtin) gtins.add(gtin);
+    }
+
+    const needDebug = page === 1 && (debug || items.length === 0 || (items.length > 0 && gtins.size === 0));
+    if (needDebug) {
+      const url = `${config.gs1.baseUrl}${config.gs1.productsPath}`;
+      console.log(`  [Debug] Request: ${url}?${new URLSearchParams({ ...params, page }).toString()}`);
+      console.log(`  [Debug] Status: ${res.status}, items.length: ${items.length}, pageInfo:`, JSON.stringify(pageInfo));
+      if (items.length > 0) {
+        console.log(`  [Debug] First item keys: ${Object.keys(items[0]).join(", ")}`);
+        console.log(`  [Debug] First item gtin: ${items[0].gtin ?? items[0].GTIN ?? "N/A"}`);
+      } else {
+        console.log(`  [Debug] Top-level keys: ${Object.keys(payload).join(", ")}`);
+      }
     }
 
     if (page % 50 === 0 || page === 1) {
@@ -86,7 +100,7 @@ async function getDbGtinsForDate(date) {
   return new Set(result.rows.map((r) => r.gtin));
 }
 
-async function verifyCoverage(date, status = "pending") {
+async function verifyCoverage(date, status = "pending", debug = false) {
   console.log("\n╔════════════════════════════════════════════════════════════════╗");
   console.log("║          COVERAGE VERIFICATION (GS1 vs DB)                      ║");
   console.log("╚════════════════════════════════════════════════════════════════╝");
@@ -94,7 +108,7 @@ async function verifyCoverage(date, status = "pending") {
 
   try {
     const [gs1Gtins, dbGtins] = await Promise.all([
-      fetchAllGs1Gtins(date, status),
+      fetchAllGs1Gtins(date, status, debug),
       getDbGtinsForDate(date)
     ]);
 
@@ -144,6 +158,7 @@ async function verifyCoverage(date, status = "pending") {
 const args = process.argv.slice(2).filter((a) => a !== "--debug");
 const date = args[0] || new Date().toISOString().slice(0, 10);
 const status = args[1] || "pending";
+const debug = process.argv.includes("--debug");
 
 if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
   console.error("Usage: node src/scripts/verifyCoverage.js YYYY-MM-DD [status] [--debug]");
@@ -152,4 +167,4 @@ if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
   process.exit(1);
 }
 
-verifyCoverage(date, status);
+verifyCoverage(date, status, debug);
