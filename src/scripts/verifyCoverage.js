@@ -1,13 +1,14 @@
 /**
  * Verify 100% coverage: fetch ALL GTINs from GS1 for a date and compare with DB.
- * Uses same cursor-mode API as ingestion (fetchGs1Page).
+ * Uses page-number mode (no paginate param) - same as testGs1PageNumber.js.
  *
  * Usage:
  *   node src/scripts/verifyCoverage.js 2026-02-24
  *   node src/scripts/verifyCoverage.js 2026-02-24 pending
  */
 
-import { fetchGs1Page } from "../services/gs1Client.js";
+import axios from "axios";
+import { config } from "../config.js";
 import { db } from "../lib/db.js";
 import dotenv from "dotenv";
 
@@ -22,35 +23,46 @@ function getGtin(item) {
 
 async function fetchAllGs1Gtins(date, status = "pending") {
   const gtins = new Set();
-  let cursor = null;
-  let pageNum = 0;
+  const client = axios.create({
+    baseURL: config.gs1.baseUrl,
+    timeout: config.gs1.timeoutMs,
+    headers: { Authorization: `Bearer ${config.gs1.token}` }
+  });
+
+  const baseParams = {
+    status,
+    from: date,
+    to: `${date}T23:59`,
+    resultperPage: 100
+  };
 
   console.log(`  Fetching from GS1 (status=${status}, from=${date}, to=${date})...`);
 
-  while (true) {
-    const page = await fetchGs1Page({
-      status,
-      from: date,
-      to: date,
-      resultPerPage: 100,
-      cursor
-    });
+  let page = 1;
+  let totalPage = 1;
 
-    pageNum++;
-    for (const item of page.items ?? []) {
+  while (page <= totalPage) {
+    const params = page === 1 ? { ...baseParams } : { ...baseParams, page };
+    const res = await client.get(config.gs1.productsPath, { params });
+    const payload = res.data ?? {};
+    const items = payload.items ?? payload.data ?? payload.products ?? [];
+    const pageInfo = payload.pageInfo ?? {};
+
+    totalPage = pageInfo.totalPage ?? totalPage;
+    for (const item of items) {
       const gtin = getGtin(item);
       if (gtin) gtins.add(gtin);
     }
 
-    if (pageNum % 10 === 0) {
-      console.log(`    Page ${pageNum}, GTINs so far: ${gtins.size}`);
+    if (page % 50 === 0 || page === 1) {
+      console.log(`    Page ${page}/${totalPage}, GTINs so far: ${gtins.size}`);
     }
 
-    if (!page.hasNextPage || !page.nextCursor) break;
-    cursor = page.nextCursor;
+    if (page >= totalPage) break;
+    page++;
   }
 
-  console.log(`  GS1 total pages: ${pageNum}, unique GTINs: ${gtins.size}`);
+  console.log(`  GS1 total pages: ${page}, unique GTINs: ${gtins.size}`);
   return gtins;
 }
 
@@ -66,6 +78,16 @@ async function getDbGtinsForDate(date) {
   return new Set(result.rows.map((r) => r.gtin));
 }
 
+async function getRunStatsForDate(date) {
+  const result = await db.query(
+    `SELECT COALESCE(SUM(items_fetched), 0) as total_fetched
+     FROM runs
+     WHERE DATE(start_time AT TIME ZONE 'Asia/Kolkata') = $1::date`,
+    [date]
+  );
+  return Number(result.rows[0]?.total_fetched ?? 0);
+}
+
 async function verifyCoverage(date, status = "pending") {
   console.log("\n╔════════════════════════════════════════════════════════════════╗");
   console.log("║          COVERAGE VERIFICATION (GS1 vs DB)                      ║");
@@ -73,9 +95,10 @@ async function verifyCoverage(date, status = "pending") {
   console.log(`\nDate: ${date} | Status filter: ${status}\n`);
 
   try {
-    const [gs1Gtins, dbGtins] = await Promise.all([
+    const [gs1Gtins, dbGtins, runStats] = await Promise.all([
       fetchAllGs1Gtins(date, status),
-      getDbGtinsForDate(date)
+      getDbGtinsForDate(date),
+      getRunStatsForDate(date)
     ]);
 
     const inGs1NotDb = [...gs1Gtins].filter((g) => !dbGtins.has(g));
@@ -103,7 +126,14 @@ async function verifyCoverage(date, status = "pending") {
     }
 
     console.log("\n─ Verdict ─────────────────────────────────────────────────────");
-    if (coverage >= 100 && inGs1NotDb.length === 0) {
+    if (gs1Gtins.size === 0) {
+      console.log("  ⚠️  GS1 API returned no data. Check GS1_TOKEN in .env (valid, not expired).");
+      if (runStats > 0) {
+        const runCoverage = (dbGtins.size / runStats * 100).toFixed(1);
+        console.log(`  ℹ️  Fallback: Runs ingested ${runStats} items for this date; DB has ${dbGtins.size} unique (~${runCoverage}% of ingested).`);
+      }
+      console.log("  Test: docker compose run --rm app node src/scripts/checkGs1Api.js", date);
+    } else if (coverage >= 100 && inGs1NotDb.length === 0) {
       console.log("  ✅ 100% COVERAGE - All GS1 products are in the DB.");
     } else if (inGs1NotDb.length > 0) {
       console.log(`  ⚠️  MISSING ${inGs1NotDb.length} products - Run ingestion to catch up.`);
