@@ -54,6 +54,13 @@ async function runHourlyPublish() {
   const data = dedupedRows.map((row) => rowToMainAppCsvRow(row));
   const payload = { data };
 
+  if (rows.length !== dedupedRows.length) {
+    logger.info(
+      { dateKey, rowsBefore: rows.length, uniqueGtins: dedupedRows.length },
+      "hourly publish: deduped by GTIN"
+    );
+  }
+
   if (data.length === 0) {
     logger.info({ dateKey }, "hourly publish: no validated results for today");
     return;
