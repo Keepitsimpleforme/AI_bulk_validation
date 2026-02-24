@@ -37,7 +37,21 @@ async function runHourlyPublish() {
 
   const dateKey = getTodayIST();
   const rows = await getValidationResultsForMainAppExport(dateKey);
-  const data = rows.map((row) => rowToMainAppCsvRow(row));
+
+  // Deduplicate by GTIN: keep the row with the richest product_snapshot so we don't show "—" from duplicate runs
+  const byGtin = new Map();
+  for (const row of rows) {
+    const snapshot = row.product_snapshot;
+    const keyCount =
+      snapshot && typeof snapshot === "object" ? Object.keys(snapshot).length : 0;
+    const existing = byGtin.get(row.gtin);
+    if (!existing || keyCount > existing.keyCount) {
+      byGtin.set(row.gtin, { row, keyCount });
+    }
+  }
+  const dedupedRows = [...byGtin.values()].map((v) => v.row);
+
+  const data = dedupedRows.map((row) => rowToMainAppCsvRow(row));
   const payload = { data };
 
   if (data.length === 0) {
