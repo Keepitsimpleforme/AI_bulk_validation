@@ -141,12 +141,14 @@ async function verifyCoverage(date, status = "pending") {
   }
 }
 
-const date = process.argv[2] || new Date().toISOString().slice(0, 10);
-const status = process.argv[3] || "pending";
+const args = process.argv.slice(2).filter((a) => a !== "--debug");
+const date = args[0] || new Date().toISOString().slice(0, 10);
+const status = args[1] || "pending";
 
 if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-  console.error("Usage: node src/scripts/verifyCoverage.js YYYY-MM-DD [status]");
+  console.error("Usage: node src/scripts/verifyCoverage.js YYYY-MM-DD [status] [--debug]");
   console.error("  Example: node src/scripts/verifyCoverage.js 2026-02-24 pending");
+  console.error("  Example: node src/scripts/verifyCoverage.js 2026-02-24 --debug");
   process.exit(1);
 }
 
