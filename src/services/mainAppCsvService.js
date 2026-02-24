@@ -8,6 +8,7 @@ import { stringify } from "csv-stringify/sync";
 /** Main-app CSV columns in required order. */
 export const MAIN_APP_CSV_HEADERS = [
   "Company Name",
+  "GTIN",
   "AI Verified Status",
   "AI Verified Reason",
   "GCP",
@@ -15,7 +16,6 @@ export const MAIN_APP_CSV_HEADERS = [
   "Category Name",
   "Subcategory Name",
   "Product Name",
-  "GTIN",
   "Product Description",
   "Price",
   "Location MRP",
