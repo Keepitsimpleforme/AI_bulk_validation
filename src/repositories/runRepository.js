@@ -78,6 +78,11 @@ export const markIngestionCompleted = async (runId) => {
   await db.query("UPDATE runs SET ingestion_completed = TRUE WHERE run_id = $1", [runId]);
 };
 
+/**
+ * Marks run as SUCCESS when ingestion and validation are complete.
+ * Delivery is optional—runs complete without waiting for delivery so the scheduler
+ * can start new runs frequently. Delivery (DOWNSTREAM_URL) still runs when configured.
+ */
 export const tryFinalizeRun = async (runId) => {
   const { rows } = await db.query(
     `UPDATE runs
@@ -86,13 +91,6 @@ export const tryFinalizeRun = async (runId) => {
        AND status = 'RUNNING'
        AND ingestion_completed = TRUE
        AND validated_count = items_fetched
-       AND delivered_count + delivery_failed_count = validated_count
-       AND NOT EXISTS (
-         SELECT 1
-         FROM delivery_outbox o
-         WHERE o.run_id = runs.run_id
-           AND o.status = 'PENDING'
-       )
      RETURNING *`,
     [runId]
   );
