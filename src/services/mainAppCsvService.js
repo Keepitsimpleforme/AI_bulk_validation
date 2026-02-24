@@ -68,6 +68,16 @@ const get = (obj, path, def = "") => {
   return v === undefined || v === null ? def : String(v).trim();
 };
 
+/** Get value trying multiple keys (e.g. GS1 may use product_name or name). */
+const getAny = (obj, keys, def = "") => {
+  if (obj == null) return def;
+  for (const k of keys) {
+    const v = get(obj, k);
+    if (v !== "" && v != null) return v;
+  }
+  return def;
+};
+
 const arrFirst = (arr) => (Array.isArray(arr) && arr.length > 0 ? arr[0] : null);
 
 /**
@@ -79,55 +89,56 @@ export const rowToMainAppCsvRow = (row) => {
   const reasonStr = Array.isArray(row.reasons) ? row.reasons.join("; ") : String(row.reasons ?? "");
 
   const status = row.validation_status ?? "";
+  // GS1 API may use dashboard-style keys ("Company Name") or snake/camel (company_detail.name, companyName)
   return {
-    "Company Name": get(p, "company_detail.name"),
+    "Company Name": getAny(p, ["Company Name", "company_detail.name", "company_name", "companyName"]),
     "AI Verified Status": status,
     "AI Verified Reason": reasonStr,
-    "GCP": get(p, "gcp"),
-    "Exempted fields": get(p, "exempted_fields"),
-    "Category Name": get(p, "category"),
-    "Subcategory Name": get(p, "sub_category"),
-    "Product Name": get(p, "name"),
+    "GCP": getAny(p, ["GCP", "gcp"]),
+    "Exempted fields": getAny(p, ["Exempted fields", "exempted_fields"]),
+    "Category Name": getAny(p, ["Category Name", "category", "category_name", "categoryName"]),
+    "Subcategory Name": getAny(p, ["Subcategory Name", "sub_category", "subcategory", "subcategory_name"]),
+    "Product Name": getAny(p, ["Product Name", "name", "product_name", "productName"]),
     "GTIN": row.gtin ?? "",
-    "Product Description": get(p, "description"),
-    "Price": get(p, "price") ?? get(mrp, "mrp"),
-    "Location MRP": get(mrp, "location"),
-    "Target Market": get(mrp, "target_market"),
-    "Country of Origin": get(p, "country_of_origin"),
-    "Approval Status": get(p, "approval_status"),
-    "Email": get(p, "email"),
-    "Condition": get(p, "condition"),
-    "Brand Name": get(p, "brand"),
-    "Gross Weight": get(p, "gross_weight"),
-    "Gross Weight Unit": get(p, "gross_weight_unit"),
-    "Net Content": get(p, "net_content") ?? get(p, "weights_and_measures.net_content"),
-    "Net Content Unit": get(p, "net_content_unit"),
-    "Net Weight": get(p, "net_weight") ?? get(p, "weights_and_measures.net_weight"),
-    "Net Weight Unit": get(p, "measurement_unit") ?? get(p, "weights_and_measures.measurement_unit"),
-    "Packaging unit": get(p, "packaging_unit"),
-    "Packaging type": get(p, "packaging_type"),
-    "Product Updated Date": get(p, "product_updated_date") ?? get(p, "updated_at"),
-    "HS Code": get(p, "hs_code"),
-    "Product Status": get(p, "product_status"),
-    "Product SKU": get(p, "product_sku") ?? get(p, "sku"),
-    "Product Remarks": get(p, "product_remarks") ?? get(p, "remarks"),
-    "Valid From": get(p, "activation_date"),
-    "Valid Till": get(p, "deactivation_date"),
-    "Product Priority": get(p, "product_priority"),
-    "Product Parent SKU": get(p, "product_parent_sku"),
-    "SGST": get(p, "sgst"),
-    "IGST": get(p, "igst"),
-    "CGST": get(p, "cgst"),
-    "Primary Depth": get(p, "primary_depth"),
-    "Front Image": get(p, "front_image") ?? get(p, "images.front"),
-    "Back Image": get(p, "back_image") ?? get(p, "images.back"),
-    "Top Image": get(p, "top_image") ?? get(p, "images.top"),
-    "Bottom Image": get(p, "bottom_image") ?? get(p, "images.bottom"),
-    "Artwork Front": get(p, "artwork_front"),
-    "Artwork Back": get(p, "artwork_back"),
-    "Right Image": get(p, "right_image") ?? get(p, "images.right"),
-    "Left Image": get(p, "left_image") ?? get(p, "images.left"),
-    "Products Count": get(p, "products_count"),
+    "Product Description": getAny(p, ["Product Description", "description", "product_description"]),
+    "Price": getAny(p, ["Price", "price"]) || get(mrp, "mrp"),
+    "Location MRP": getAny(p, ["Location MRP"]) || get(mrp, "location"),
+    "Target Market": getAny(p, ["Target Market", "target_market"]) || get(mrp, "target_market"),
+    "Country of Origin": getAny(p, ["Country of Origin", "country_of_origin"]),
+    "Approval Status": getAny(p, ["Approval Status", "approval_status"]),
+    "Email": getAny(p, ["Email", "email"]),
+    "Condition": getAny(p, ["Condition", "condition"]),
+    "Brand Name": getAny(p, ["Brand Name", "brand", "brand_name", "brandName"]),
+    "Gross Weight": getAny(p, ["Gross Weight", "gross_weight"]),
+    "Gross Weight Unit": getAny(p, ["Gross Weight Unit", "gross_weight_unit"]),
+    "Net Content": getAny(p, ["Net Content", "net_content"]) || get(p, "weights_and_measures.net_content"),
+    "Net Content Unit": getAny(p, ["Net Content Unit", "net_content_unit"]),
+    "Net Weight": getAny(p, ["Net Weight", "net_weight"]) || get(p, "weights_and_measures.net_weight"),
+    "Net Weight Unit": getAny(p, ["Net Weight Unit", "measurement_unit"]) || get(p, "weights_and_measures.measurement_unit"),
+    "Packaging unit": getAny(p, ["Packaging unit", "packaging_unit"]),
+    "Packaging type": getAny(p, ["Packaging type", "packaging_type"]),
+    "Product Updated Date": getAny(p, ["Product Updated Date", "product_updated_date", "updated_at"]),
+    "HS Code": getAny(p, ["HS Code", "hs_code"]),
+    "Product Status": getAny(p, ["Product Status", "product_status"]),
+    "Product SKU": getAny(p, ["Product SKU", "product_sku", "sku"]),
+    "Product Remarks": getAny(p, ["Product Remarks", "product_remarks", "remarks"]),
+    "Valid From": getAny(p, ["Valid From", "activation_date"]),
+    "Valid Till": getAny(p, ["Valid Till", "deactivation_date"]),
+    "Product Priority": getAny(p, ["Product Priority", "product_priority"]),
+    "Product Parent SKU": getAny(p, ["Product Parent SKU", "product_parent_sku"]),
+    "SGST": getAny(p, ["SGST", "sgst"]),
+    "IGST": getAny(p, ["IGST", "igst"]),
+    "CGST": getAny(p, ["CGST", "cgst"]),
+    "Primary Depth": getAny(p, ["Primary Depth", "primary_depth"]),
+    "Front Image": getAny(p, ["Front Image", "front_image"]) || get(p, "images.front"),
+    "Back Image": getAny(p, ["Back Image", "back_image"]) || get(p, "images.back"),
+    "Top Image": getAny(p, ["Top Image", "top_image"]) || get(p, "images.top"),
+    "Bottom Image": getAny(p, ["Bottom Image", "bottom_image"]) || get(p, "images.bottom"),
+    "Artwork Front": getAny(p, ["Artwork Front", "artwork_front"]),
+    "Artwork Back": getAny(p, ["Artwork Back", "artwork_back"]),
+    "Right Image": getAny(p, ["Right Image", "right_image"]) || get(p, "images.right"),
+    "Left Image": getAny(p, ["Left Image", "left_image"]) || get(p, "images.left"),
+    "Products Count": getAny(p, ["Products Count", "products_count"]),
     // Legacy keys for dashboard compatibility (same payload for both)
     GTIN_number: row.gtin ?? "",
     Status: status
