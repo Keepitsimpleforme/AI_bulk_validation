@@ -39,7 +39,7 @@ async function fetchAllGs1Gtins(date, status = "pending", debug = false) {
   const baseParams = {
     status,
     from: date,
-    to: `${date}T23:59`,
+    to: `${date}T23:59:59`,
     resultperPage: 100
   };
 
@@ -68,12 +68,14 @@ async function fetchAllGs1Gtins(date, status = "pending", debug = false) {
     if (needDebug) {
       const url = `${config.gs1.baseUrl}${config.gs1.productsPath}`;
       console.log(`  [Debug] Request: ${url}?${new URLSearchParams(params).toString()}`);
-      console.log(`  [Debug] Status: ${res.status}, items.length: ${items.length}, pageInfo:`, JSON.stringify(pageInfo));
+      console.log(`  [Debug] HTTP ${res.status}, items.length: ${items.length}`);
+      console.log(`  [Debug] API response: status=${payload.status}, message=${payload.message}`);
+      console.log(`  [Debug] pageInfo:`, JSON.stringify(pageInfo));
       if (items.length > 0) {
         console.log(`  [Debug] First item keys: ${Object.keys(items[0]).join(", ")}`);
         console.log(`  [Debug] First item gtin: ${items[0].gtin ?? items[0].GTIN ?? "N/A"}`);
       } else {
-        console.log(`  [Debug] Top-level keys: ${Object.keys(payload).join(", ")}`);
+        console.log(`  [Debug] Full response:`, JSON.stringify(payload, null, 2).slice(0, 1200));
       }
     }
 
