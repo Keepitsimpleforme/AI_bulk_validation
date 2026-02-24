@@ -33,7 +33,7 @@ async function fetchAllGs1Gtins(date, status = "pending") {
     status,
     from: date,
     to: `${date}T23:59`,
-    resultperPage: 100
+    resultperPage: 10
   };
 
   console.log(`  Fetching from GS1 (status=${status}, from=${date}, to=${date})...`);
