@@ -36,7 +36,7 @@ async function fetchAllGs1Gtins(date, status = "pending", debug = false) {
     headers: { Authorization: `Bearer ${config.gs1.token}` }
   });
 
-  const params = {
+  const baseParams = {
     status,
     from: date,
     to: `${date}T23:59`,
@@ -49,8 +49,9 @@ async function fetchAllGs1Gtins(date, status = "pending", debug = false) {
   let totalPage = 1;
 
   while (page <= totalPage) {
+    const params = page === 1 ? { ...baseParams } : { ...baseParams, page };
     const res = await client.get(config.gs1.productsPath, {
-      params: { ...params, page }
+      params
     });
     const payload = res.data ?? {};
     const items = extractItems(payload);
@@ -66,7 +67,7 @@ async function fetchAllGs1Gtins(date, status = "pending", debug = false) {
     const needDebug = page === 1 && (debug || items.length === 0 || (items.length > 0 && gtins.size === 0));
     if (needDebug) {
       const url = `${config.gs1.baseUrl}${config.gs1.productsPath}`;
-      console.log(`  [Debug] Request: ${url}?${new URLSearchParams({ ...params, page }).toString()}`);
+      console.log(`  [Debug] Request: ${url}?${new URLSearchParams(params).toString()}`);
       console.log(`  [Debug] Status: ${res.status}, items.length: ${items.length}, pageInfo:`, JSON.stringify(pageInfo));
       if (items.length > 0) {
         console.log(`  [Debug] First item keys: ${Object.keys(items[0]).join(", ")}`);
