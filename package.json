@@ -27,6 +27,7 @@
     "analyze:discrepancy": "node src/scripts/analyzeDiscrepancy.js",
     "compare:queries": "node src/scripts/compareQueries.js",
     "verify:continuous": "node src/scripts/verifyContinuousValidation.js",
+    "verify:coverage": "node src/scripts/verifyCoverage.js",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
     "docker:down:volumes": "docker compose down -v"
