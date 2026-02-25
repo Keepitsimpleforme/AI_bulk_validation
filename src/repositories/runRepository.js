@@ -56,6 +56,8 @@ export const upsertCheckpoint = async (runId, sourcePageSeq, cursorIn, cursorOut
 /**
  * Get the last run's cursor_out for the given date (any status).
  * Used when creating a new run to continue from where the previous run left off.
+ * Only uses cursor from runs that fetched items AND did not complete (cursor still useful).
+ * Skips: items_fetched=0, or ingestion_completed=true (cursor is "end of stream" → returns 0 items).
  */
 export const getLastRunCheckpointForDate = async (date) => {
   const dateStr = String(date).slice(0, 10);
@@ -65,6 +67,8 @@ export const getLastRunCheckpointForDate = async (date) => {
     JOIN run_checkpoints rc ON rc.run_id = r.run_id
     WHERE r.from_date::text LIKE $1 || '%'
       AND rc.cursor_out IS NOT NULL
+      AND r.items_fetched > 0
+      AND (r.ingestion_completed = FALSE OR r.ingestion_completed IS NULL)
     ORDER BY r.start_time DESC
     LIMIT 1
   `;
@@ -76,6 +80,8 @@ export const getLastRunCheckpointForDate = async (date) => {
     JOIN batch_events be ON be.run_id = r.run_id
     WHERE r.from_date::text LIKE $1 || '%'
       AND be.cursor_out IS NOT NULL
+      AND r.items_fetched > 0
+      AND (r.ingestion_completed = FALSE OR r.ingestion_completed IS NULL)
     ORDER BY r.start_time DESC, be.source_page_seq DESC
     LIMIT 1
   `;
