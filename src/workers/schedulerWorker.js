@@ -17,6 +17,7 @@ import axios from "axios";
 import { config } from "../config.js";
 import { logger } from "../lib/logger.js";
 import { db } from "../lib/db.js";
+import { getResumableRunForDate } from "../repositories/runRepository.js";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -80,6 +81,41 @@ async function getLatestRunForToday(date) {
 }
 
 /**
+ * Resume an existing run from its last checkpoint
+ */
+async function resumeValidationRun(runId) {
+  try {
+    logger.info({ runId }, "resuming scheduled validation run");
+
+    const response = await axios.post(
+      `${API_BASE}/v1/runs/${runId}/resume`,
+      {},
+      {
+        timeout: 10000,
+        headers: { "Content-Type": "application/json" }
+      }
+    );
+
+    logger.info(
+      { runId, resumedFromCursor: response.data.resumedFromCursor },
+      "scheduled run resumed"
+    );
+
+    return { success: true, runId };
+  } catch (error) {
+    logger.error(
+      {
+        err: error,
+        status: error.response?.status,
+        runId
+      },
+      "failed to resume scheduled run"
+    );
+    return { success: false, error: error.message };
+  }
+}
+
+/**
  * Start a new validation run for today
  */
 async function startValidationRun(date) {
@@ -127,7 +163,25 @@ async function runScheduler() {
   logger.info({ today, timestamp: now.toISOString() }, "scheduler tick");
 
   try {
-    // Check for active runs
+    // 1. Try to resume an incomplete run (ingestion not done, has checkpoint)
+    const resumableRun = await getResumableRunForDate(today);
+    if (resumableRun) {
+      const result = await resumeValidationRun(resumableRun.run_id);
+      if (result.success) {
+        logger.info(
+          { runId: resumableRun.run_id, date: today },
+          "scheduled run resumed from checkpoint"
+        );
+      } else {
+        logger.error(
+          { error: result.error, runId: resumableRun.run_id },
+          "resume failed; will not create new run this tick"
+        );
+      }
+      return;
+    }
+
+    // 2. Check for active runs (RUNNING/PARTIAL_FAILED, no checkpoint to resume)
     const activeRun = await hasActiveRunForToday(today);
     if (activeRun) {
       logger.info(
@@ -141,7 +195,7 @@ async function runScheduler() {
       return;
     }
 
-    // Check latest completed run
+    // 3. Check latest completed run
     const latestRun = await getLatestRunForToday(today);
     if (latestRun) {
       const runAge = now - new Date(latestRun.start_time);

@@ -53,9 +53,89 @@ export const upsertCheckpoint = async (runId, sourcePageSeq, cursorIn, cursorOut
   return rows[0];
 };
 
+/**
+ * Get the last run's cursor_out for the given date (any status).
+ * Used when creating a new run to continue from where the previous run left off.
+ */
+export const getLastRunCheckpointForDate = async (date) => {
+  const dateStr = String(date).slice(0, 10);
+  const query = `
+    SELECT rc.cursor_out
+    FROM runs r
+    JOIN run_checkpoints rc ON rc.run_id = r.run_id
+    WHERE r.from_date::text LIKE $1 || '%'
+      AND rc.cursor_out IS NOT NULL
+    ORDER BY r.start_time DESC
+    LIMIT 1
+  `;
+  const { rows } = await db.query(query, [dateStr]);
+  if (rows[0]?.cursor_out) return rows[0].cursor_out;
+  const fallbackQuery = `
+    SELECT be.cursor_out
+    FROM runs r
+    JOIN batch_events be ON be.run_id = r.run_id
+    WHERE r.from_date::text LIKE $1 || '%'
+      AND be.cursor_out IS NOT NULL
+    ORDER BY r.start_time DESC, be.source_page_seq DESC
+    LIMIT 1
+  `;
+  const { rows: fallbackRows } = await db.query(fallbackQuery, [dateStr]);
+  return fallbackRows[0]?.cursor_out ?? null;
+};
+
+/**
+ * Find a run for the given date that can be resumed (ingestion incomplete, has checkpoint).
+ * Used by scheduler to resume instead of creating a new run.
+ */
+export const getResumableRunForDate = async (date) => {
+  const query = `
+    SELECT r.run_id, r.status, r.status_filter, r.from_date, r.to_date, r.result_per_page
+    FROM runs r
+    WHERE r.from_date::text LIKE $1 || '%'
+      AND r.status IN ('RUNNING', 'PARTIAL_FAILED')
+      AND r.ingestion_completed = FALSE
+      AND EXISTS (
+        SELECT 1 FROM run_checkpoints rc
+        WHERE rc.run_id = r.run_id AND rc.cursor_out IS NOT NULL
+      )
+    ORDER BY r.start_time DESC
+    LIMIT 1
+  `;
+  const { rows } = await db.query(query, [date]);
+  if (rows[0]) return rows[0];
+  // Fallback: run_checkpoints might be empty but batch_events has cursor
+  const fallbackQuery = `
+    SELECT r.run_id, r.status, r.status_filter, r.from_date, r.to_date, r.result_per_page
+    FROM runs r
+    JOIN batch_events be ON be.run_id = r.run_id
+    WHERE r.from_date::text LIKE $1 || '%'
+      AND r.status IN ('RUNNING', 'PARTIAL_FAILED')
+      AND r.ingestion_completed = FALSE
+      AND be.cursor_out IS NOT NULL
+    ORDER BY r.start_time DESC, be.source_page_seq DESC
+    LIMIT 1
+  `;
+  const { rows: fallbackRows } = await db.query(fallbackQuery, [date]);
+  return fallbackRows[0] ?? null;
+};
+
 export const getCheckpoint = async (runId) => {
-  const { rows } = await db.query("SELECT * FROM run_checkpoints WHERE run_id = $1", [runId]);
-  return rows[0] ?? null;
+  let { rows } = await db.query("SELECT * FROM run_checkpoints WHERE run_id = $1", [runId]);
+  if (rows[0]) return rows[0];
+  const { rows: batchRows } = await db.query(
+    `SELECT source_page_seq, cursor_in, cursor_out
+     FROM batch_events WHERE run_id = $1 ORDER BY source_page_seq DESC LIMIT 1`,
+    [runId]
+  );
+  if (!batchRows[0]) return null;
+  const b = batchRows[0];
+  return {
+    run_id: runId,
+    source_page_seq: b.source_page_seq,
+    cursor_in: b.cursor_in,
+    cursor_out: b.cursor_out,
+    updated_at: null
+  };
 };
 
 export const insertBatchEvent = async (event) => {

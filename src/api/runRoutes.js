@@ -2,7 +2,7 @@ import express from "express";
 import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { createRun, getCheckpoint, getRun, updateRunStatus } from "../repositories/runRepository.js";
+import { createRun, getCheckpoint, getLastRunCheckpointForDate, getRun, updateRunStatus } from "../repositories/runRepository.js";
 import { generateDailySummary, generateRunReport, generateValidationResultsCSV } from "../services/reportingService.js";
 import { ingestRun } from "../services/ingestionService.js";
 
@@ -11,12 +11,15 @@ export const runRouter = express.Router();
 runRouter.post("/v1/runs", async (req, res, next) => {
   try {
     const runId = randomUUID();
-    let { status, from, to, resultPerPage = 100 } = req.body ?? {};
+    let { status, from, to, resultPerPage = 100, startCursor } = req.body ?? {};
     if (!from || !to) {
       return res.status(400).json({ message: "from and to (YYYY-MM-DD) are required" });
     }
     if (from === to && typeof to === "string" && !to.includes("T")) {
       to = `${to}T23:59:59`;
+    }
+    if (startCursor == null) {
+      startCursor = await getLastRunCheckpointForDate(from);
     }
     const run = await createRun({
       runId,
@@ -31,14 +34,16 @@ runRouter.post("/v1/runs", async (req, res, next) => {
       statusFilter: status,
       from,
       to,
-      resultPerPage
+      resultPerPage,
+      startCursor: startCursor ?? null
     })
       .then(() => undefined)
       .catch(async () => updateRunStatus(runId, "PARTIAL_FAILED"));
 
     res.status(202).json({
       runId: run.run_id,
-      status: run.status
+      status: run.status,
+      startCursor: startCursor ?? null
     });
   } catch (error) {
     next(error);
