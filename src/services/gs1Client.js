@@ -120,7 +120,7 @@ export const fetchGs1Page = async ({ status, from, to, resultPerPage, cursor }) 
  * Backfill variant: fetch all pending products in cursor mode,
  * sorted by modified_date ascending, without from/to date filters.
  */
-export const fetchGs1BackfillPage = async ({ status, resultPerPage, cursor }) => {
+export const fetchGs1BackfillPage = async ({ status, resultPerPage, cursor, from, to }) => {
   const params = {
     paginate: "cursor",
     status,
@@ -128,6 +128,15 @@ export const fetchGs1BackfillPage = async ({ status, resultPerPage, cursor }) =>
     sortBy: "modified_date",
     sortDir: "asc"
   };
+
+  const fromDate = normalizeDateForGs1(from);
+  let toDate = normalizeDateForGs1(to);
+  if (fromDate && toDate && fromDate === toDate && !toDate.includes("T")) {
+    toDate = `${toDate}T23:59:59`;
+  }
+
+  if (fromDate) params.from = fromDate;
+  if (toDate) params.to = toDate;
 
   if (cursor) {
     params.cursor = cursor;

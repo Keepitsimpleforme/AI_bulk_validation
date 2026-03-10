@@ -75,7 +75,7 @@ export const ingestRun = async ({ runId, statusFilter, from, to, resultPerPage, 
  * Skips GTINs that already exist in validation_results to avoid duplicate validation.
  * Intended to be called from a manual script (no scheduler).
  */
-export const ingestBackfillRun = async ({ runId, statusFilter, resultPerPage, startCursor }) => {
+export const ingestBackfillRun = async ({ runId, statusFilter, resultPerPage, startCursor, from, to }) => {
   let cursor = startCursor ?? null;
   let hasNext = true;
   let sourcePageSeq = 0;
@@ -97,7 +97,9 @@ export const ingestBackfillRun = async ({ runId, statusFilter, resultPerPage, st
     const page = await fetchGs1BackfillPage({
       status: statusFilter,
       resultPerPage,
-      cursor
+      cursor,
+      from,
+      to
     });
 
     totalPages += 1;

@@ -9,8 +9,10 @@
  *     ?paginate=cursor&status=pending&resultperPage=BACKFILL_RESULT_PER_PAGE
  *     &sortBy=modified_date&sortDir=asc
  * - Does NOT use from/to date filters.
- * - Every run is a fresh backfill run with a new run_id.
  * - All validated GTINs from backfill appear in today's reports/dashboards.
+ *
+ * To chunk backfill or bypass GS1 12,000 item limit, provide dates:
+ *   node src/scripts/runBackfill.js --from 2024-01-01 --to 2024-06-30
  */
 
 import { randomUUID } from "node:crypto";
@@ -20,6 +22,20 @@ import { createRun, updateRunStatus } from "../repositories/runRepository.js";
 import { ingestBackfillRun } from "../services/ingestionService.js";
 
 async function main() {
+  const args = process.argv.slice(2);
+  let fromDate = null;
+  let toDate = null;
+
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--from' && args[i+1]) {
+      fromDate = args[i+1];
+      i++;
+    } else if (args[i] === '--to' && args[i+1]) {
+      toDate = args[i+1];
+      i++;
+    }
+  }
+
   const today = new Date().toISOString().slice(0, 10);
   const runId = randomUUID();
   const statusFilter = "pending";
@@ -32,7 +48,8 @@ async function main() {
   console.log("Run ID:        ", runId);
   console.log("Status filter: ", statusFilter);
   console.log("Result/page:   ", resultPerPage);
-  console.log("Date (from/to):", today);
+  console.log("Date (from/to):", fromDate ? `${fromDate} to ${toDate || 'Now'}` : "All Time (subject to API limits)");
+  console.log("Log Date:      ", today);
   console.log("");
 
   if (!config.gs1.token) {
@@ -54,7 +71,9 @@ async function main() {
       runId,
       statusFilter,
       resultPerPage,
-      startCursor: null
+      startCursor: null,
+      from: fromDate,
+      to: toDate
     });
 
     await updateRunStatus(runId, "SUCCESS");
