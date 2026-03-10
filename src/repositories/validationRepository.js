@@ -59,3 +59,23 @@ export const getValidationResultsForMainAppExport = async (dateYyyyMmDd) => {
   );
   return result.rows;
 };
+
+/**
+ * Returns a Set of GTINs that already exist in validation_results.
+ * Used by backfill to skip GTINs that have been validated before.
+ */
+export const findExistingGtins = async (gtins) => {
+  const unique = Array.from(new Set(gtins.filter((g) => g && String(g).trim() !== ""))).map((g) =>
+    String(g).trim()
+  );
+  if (!unique.length) {
+    return new Set();
+  }
+  const { rows } = await db.query(
+    `SELECT DISTINCT gtin
+     FROM validation_results
+     WHERE gtin = ANY($1::text[])`,
+    [unique]
+  );
+  return new Set(rows.map((r) => r.gtin));
+};

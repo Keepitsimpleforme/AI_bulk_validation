@@ -115,3 +115,60 @@ export const fetchGs1Page = async ({ status, from, to, resultPerPage, cursor }) 
     }
   });
 };
+
+/**
+ * Backfill variant: fetch all pending products in cursor mode,
+ * sorted by modified_date ascending, without from/to date filters.
+ */
+export const fetchGs1BackfillPage = async ({ status, resultPerPage, cursor }) => {
+  const params = {
+    paginate: "cursor",
+    status,
+    resultperPage: resultPerPage,
+    sortBy: "modified_date",
+    sortDir: "asc"
+  };
+
+  if (cursor) {
+    params.cursor = cursor;
+  }
+
+  return withRetries({
+    maxRetries: config.gs1.maxRetries,
+    baseMs: config.gs1.backoffBaseMs,
+    shouldRetry: isRetriableGs1Error,
+    onRetry: (error, attempt, waitMs) => {
+      metrics.retryTotal.inc({ component: "ingestion" }, 1);
+      logger.warn(
+        { attempt, waitMs, status: error?.response?.status },
+        "retrying GS1 backfill fetch"
+      );
+    },
+    fn: async () => {
+      const response = await client.get(config.gs1.productsPath, { params });
+      const payload = response.data ?? {};
+      const pageInfo = payload.pageInfo ?? {};
+      const items = Array.isArray(payload.items)
+        ? payload.items
+        : Array.isArray(payload.data)
+          ? payload.data
+          : Array.isArray(payload.products)
+            ? payload.products
+            : [];
+      const nextCursor = payload.nextCursor ?? pageInfo.nextCursor ?? null;
+      const hasNextPage =
+        typeof payload.hasNextPage === "boolean"
+          ? payload.hasNextPage
+          : typeof pageInfo.hasNextPage === "boolean"
+            ? pageInfo.hasNextPage
+            : Boolean(nextCursor);
+      metrics.gs1PagesFetchedTotal.inc(1);
+      metrics.gs1ItemsFetchedTotal.inc(items.length);
+      return {
+        items,
+        nextCursor,
+        hasNextPage
+      };
+    }
+  });
+};
