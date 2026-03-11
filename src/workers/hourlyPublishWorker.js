@@ -66,10 +66,20 @@ async function runHourlyPublish() {
     return;
   }
 
+  // Chunk massive payloads to prevent 504 Gateway Timeouts on the dashboard
+  const CHUNK_SIZE = 5000;
+  const chunks = [];
+  for (let i = 0; i < data.length; i += CHUNK_SIZE) {
+    chunks.push(data.slice(i, i + CHUNK_SIZE));
+  }
+
   if (dashboardUrl) {
     try {
-      await sendPut(dashboardUrl, payload);
-      logger.info({ dateKey, count: data.length, url: dashboardUrl }, "hourly publish (dashboard) completed");
+      for (const [idx, chunk] of chunks.entries()) {
+        await sendPut(dashboardUrl, { data: chunk });
+        logger.info({ dateKey, chunk: idx + 1, totalChunks: chunks.length, count: chunk.length, url: dashboardUrl }, "hourly publish (dashboard) chunk completed");
+      }
+      logger.info({ dateKey, count: data.length, url: dashboardUrl }, "hourly publish (dashboard) fully completed");
     } catch (err) {
       logger.error(
         { err: err.message, status: err.response?.status, dateKey, count: data.length, url: dashboardUrl },
@@ -81,8 +91,11 @@ async function runHourlyPublish() {
 
   if (mainAppUrl) {
     try {
-      await sendPut(mainAppUrl, payload);
-      logger.info({ dateKey, count: data.length, url: mainAppUrl }, "hourly publish (main app) completed");
+      for (const [idx, chunk] of chunks.entries()) {
+        await sendPut(mainAppUrl, { data: chunk });
+        logger.info({ dateKey, chunk: idx + 1, totalChunks: chunks.length, count: chunk.length, url: mainAppUrl }, "hourly publish (main app) chunk completed");
+      }
+      logger.info({ dateKey, count: data.length, url: mainAppUrl }, "hourly publish (main app) fully completed");
     } catch (err) {
       logger.error(
         { err: err.message, status: err.response?.status, dateKey, count: data.length, url: mainAppUrl },
