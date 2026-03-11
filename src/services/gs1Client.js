@@ -125,7 +125,7 @@ export const fetchGs1BackfillPage = async ({ status, resultPerPage, cursor, from
     paginate: "cursor",
     status,
     resultperPage: resultPerPage,
-    sortBy: "modified_date",
+    sortBy: "created_date",
     sortDir: "asc"
   };
 
