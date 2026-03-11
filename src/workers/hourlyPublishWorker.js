@@ -35,7 +35,7 @@ async function runHourlyPublish() {
     return;
   }
 
-  const dateKey = getTodayIST();
+  const dateKey = process.argv[2] || getTodayIST();
   const rows = await getValidationResultsForMainAppExport(dateKey);
 
   // Deduplicate by GTIN: keep the row with the richest product_snapshot so we don't show "—" from duplicate runs
