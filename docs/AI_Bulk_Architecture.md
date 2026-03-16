@@ -43,7 +43,7 @@ npm run backfill
 npm run backfill -- --from 2024-01-01 --to 2024-06-30
 
 # 3. High-Speed Date-Filtered Run: Uses 100 items per page to maximize network efficiency
-BACKFILL_RESULT_PER_PAGE=100 npm run backfill -- --from 2023-01-01 --to 2023-12-31
+BACKFILL_RESULT_PER_PAGE=100 npm run backfill -- --from 2026-03-15 --to 2026-03-16
 
 # 4. Hourly Publish Force Push: Forces the hourly worker to publish legacy payloads (chunked automatically by 5,000 records) to Downstream Dashboards
 HOURLY_PUBLISH_TIMEOUT_MS=300000 npm run worker:hourly-publish -- "2026-03-11"
@@ -104,7 +104,7 @@ Key relationships: `runs` → `run_checkpoints` (1:1), `batch_events` (1:N), `va
 ## 7. Publish
 | Worker | Interval | Action |
 | :--- | :--- | :--- |
-| `hourlyPublishWorker.js` | Every 30 min | Deduplicate today's `validation_results` by GTIN → chunk payload to 5000 max → `PUT` to `HOURLY_PUBLISH_URL` and `MAIN_APP_PUBLISH_URL`. |
+| `hourlyPublishWorker.js` | Every 60 min | Deduplicate today's `validation_results` by GTIN → chunk payload to 5000 max → `PUT` to `HOURLY_PUBLISH_URL` and `MAIN_APP_PUBLISH_URL`. |
 | `mainAppCsvWorker.js` | Every 60 min | Same dataset → `buildMainAppCsv()` → `POST` CSV to `MAIN_APP_CSV_URL` (if configured). |
 | `reportSchedulerWorker.js` | Every 2 h | Generate run reports and daily summary JSON/CSV to `outputs/`. |
 
@@ -145,7 +145,7 @@ Key relationships: `runs` → `run_checkpoints` (1:1), `batch_events` (1:N), `va
 | `worker-outbox-replay`| `node src/workers/outboxReplayWorker.js` | Runs every 600 s. |
 | `scheduler` | `node src/workers/schedulerWorker.js` | Runs every 900 s. |
 | `report-scheduler` | `node src/workers/reportSchedulerWorker.js` | Runs every 7 200 s. |
-| `hourly-publish` | `node src/workers/hourlyPublishWorker.js` | Every 1 800 s; host.docker.internal access. |
+| `hourly-publish` | `node src/workers/hourlyPublishWorker.js` | Every 3 600 s; host.docker.internal access. |
 | `main-app-csv` | `node src/workers/mainAppCsvWorker.js`| Every 3 600 s; host.docker.internal access. |
 
 ## 11. Key Files Reference
