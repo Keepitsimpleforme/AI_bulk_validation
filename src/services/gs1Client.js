@@ -56,20 +56,22 @@ export const fetchGs1Page = async ({ status, from, to, resultPerPage, cursor }) 
   const params = {
     paginate: "cursor",
     status,
-    resultperPage: resultPerPage
+    resultperPage: resultPerPage,
+    sortBy: "modified_date",
+    sortDir: "asc"
   };
   
-  // Always normalize dates to YYYY-MM-DD format for GS1 API
+  // Date filters intentionally disabled for now per DQ team logic.
+  // We accept the args in case we re-enable them later, but do not pass them to the GS1 params.
+  /*
   const fromDate = normalizeDateForGs1(from);
   let toDate = normalizeDateForGs1(to);
-  // If from and to are the same date, append T23:59:59 to include full day
   if (fromDate === toDate && !toDate.includes("T")) {
     toDate = `${toDate}T23:59:59`;
   }
-  
-  // Always include date filters to ensure cursor pagination respects date range
   params.from = fromDate;
   params.to = toDate;
+  */
   
   // Include cursor if provided (for pagination)
   if (cursor) {
