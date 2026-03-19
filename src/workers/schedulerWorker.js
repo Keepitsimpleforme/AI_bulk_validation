@@ -47,7 +47,7 @@ async function hasActiveRunForToday(date) {
       FROM runs
       WHERE from_date::text LIKE $1 || '%'
         AND status IN ('RUNNING', 'PARTIAL_FAILED')
-        AND start_time > NOW() - INTERVAL '2 hours'
+        AND start_time > NOW() - INTERVAL '30 minutes'
       ORDER BY start_time DESC
       LIMIT 1
     `, [date]);
