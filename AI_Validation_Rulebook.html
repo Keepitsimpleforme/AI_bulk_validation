@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Bulk Validation Rulebook</title>
+  <style>
+    body {
+      font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+
+    h1 {
+      color: #2c3e50;
+      border-bottom: 2px solid #3498db;
+      padding-bottom: 10px;
+      margin-bottom: 30px;
+      font-size: 28px;
+    }
+
+    h2 {
+      color: #2980b9;
+      margin-top: 35px;
+      font-size: 22px;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 5px;
+    }
+
+    ul {
+      padding-left: 20px;
+    }
+
+    li {
+      margin-bottom: 12px;
+      font-size: 16px;
+    }
+
+    .rule-title {
+      font-weight: 600;
+      color: #2c3e50;
+    }
+
+    .example {
+      font-size: 14px;
+      color: #7f8c8d;
+      background: #f8f9fa;
+      padding: 4px 8px;
+      border-radius: 4px;
+      display: inline-block;
+      margin-top: 4px;
+      border: 1px solid #e9ecef;
+    }
+
+    .valid {
+      color: #27ae60;
+      font-weight: 500;
+    }
+
+    .invalid {
+      color: #c0392b;
+      font-weight: 500;
+    }
+
+    .note {
+      margin-top: 40px;
+      padding: 15px;
+      background-color: #fff3cd;
+      border-left: 5px solid #ffc107;
+      border-radius: 4px;
+      font-size: 14px;
+      color: #856404;
+    }
+
+    hr {
+      border: 0;
+      height: 1px;
+      background: #e0e0e0;
+      margin: 40px 0;
+    }
+
+    @media print {
+      body {
+        padding: 0;
+        max-width: 100%;
+      }
+
+      .note {
+        border: 1px solid #ffc107;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>AI Bulk Validation - Rulebook</h1>
+  <p>This document precisely details every automated rule currently enforced by the AI validation system. If a product
+    metadata payload fails any of these programmed checks, the AI automatically assigns a <strong>Rejected</strong>
+    status.</p>
+
+  <h2>1. Core Product Identification</h2>
+  <p>Every product must contain basic identifying details for database sync.</p>
+  <ul>
+    <li><span class="rule-title">GTIN Number:</span> Cannot be blank. <br><span class="example">Example:
+        8901234567890</span></li>
+    <li><span class="rule-title">Brand Name:</span> Cannot be blank.</li>
+    <li><span class="rule-title">Product Name:</span> Cannot be blank.</li>
+    <li><span class="rule-title">Product Description:</span> Cannot be blank.</li>
+    <li><span class="rule-title">Company Name:</span> Cannot be blank.</li>
+  </ul>
+
+  <h2>2. Categorization & Taxation</h2>
+  <p>The system strictly enforces category placement and tax codes for retail readiness.</p>
+  <ul>
+    <li><span class="rule-title">Category:</span> Cannot be blank. <br><span class="example">Example: Food,
+        Electronics</span></li>
+    <li><span class="rule-title">Sub Category:</span> Cannot be blank.</li>
+    <li><span class="rule-title">HS Code (Harmonized System):</span> Cannot be blank.</li>
+    <li><span class="rule-title">IGST (Tax Rate):</span> Cannot be blank.</li>
+  </ul>
+
+  <h2>3. Pricing & Market Information (MRP)</h2>
+  <p>The product must contain at least one valid pricing tier.</p>
+  <ul>
+    <li><span class="rule-title">MRP Value:</span> Must be greater than zero. It cannot be 0, negative, or blank.
+      <br><span class="example"><span class="valid">Valid:</span> 150.00 | <span class="invalid">Invalid:</span>
+        0.00</span>
+    </li>
+    <li><span class="rule-title">Target Market:</span> Cannot be blank.</li>
+    <li><span class="rule-title">MRP Location:</span> Cannot be blank.</li>
+  </ul>
+
+  <h2>4. Lifecycle Dates</h2>
+  <p>All dates must strictly follow the standard format: YYYY-MM-DD.</p>
+  <ul>
+    <li><span class="rule-title">Activation Date:</span> Must be a valid date. <br><span class="example"><span
+          class="valid">Valid:</span> 2026-03-18 | <span class="invalid">Invalid:</span> 18-03-2026</span></li>
+    <li><span class="rule-title">Deactivation Date:</span> Must be a valid date.</li>
+    <li><span class="rule-title">MRP Activation Date:</span> Must be a valid date.</li>
+  </ul>
+
+  <h2>5. Weights and Measurements (Net Content)</h2>
+  <p>The Net Content format must strictly contain mathematical numbers. The system rejects text strings placed inside
+    numeric fields.</p>
+  <ul>
+    <li><span class="rule-title">Kilograms (kg) & Liters (l):</span> Must be a raw number. <strong>Rule:</strong> Cannot
+      exceed 3 digits in length. <br><span class="example"><span class="valid">Valid:</span> 1.5 | <span
+          class="invalid">Invalid:</span> 1000 (Should be 1 tonne)</span></li>
+    <li><span class="rule-title">Grams (g) & Milliliters (ml):</span> Must be a raw number. <br><span
+        class="example"><span class="valid">Valid:</span> 500 | <span class="invalid">Invalid:</span> 500g (Text letters
+        trigger math failure)</span></li>
+  </ul>
+
+  <h2>6. Food-Specific Regulations</h2>
+  <p><em>These rules are ONLY enforced if the product's "Category" is explicitly set to Food.</em></p>
+  <ul>
+    <li><span class="rule-title">FSSAI License Number:</span> Must be exactly 14 digits and legally begin with the
+      number 1. <br><span class="example"><span class="valid">Valid:</span> 12345678901234 | <span
+          class="invalid">Invalid:</span> 2345678901234</span></li>
+    <li><span class="rule-title">Food Type:</span> Cannot be blank. <br><span class="example">Example: Vegetarian,
+        Non-Vegetarian</span></li>
+    <li><span class="rule-title">Shelf Life Metrics:</span> Value, Unit, and Based On cannot be blank. <br><span
+        class="example">Example: 12, Months, From Date of Manufacture</span></li>
+  </ul>
+
+  <div class="note">
+    <strong>Developer Note: Missing Exemption Bypass</strong><br>
+    The AI codebase currently does not contain an override rule for "Exemptions". If a product is legally granted an
+    exemption for any of the fields above, the system will still forcefully reject it due to missing data. This requires
+    a pending bypass update to the AI architecture.
+  </div>
+
+</body>
+
+</html>
