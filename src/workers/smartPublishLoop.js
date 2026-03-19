@@ -33,8 +33,8 @@ const checkAndRun = () => {
   if (PUSH_SCHEDULE.includes(currentTimeIST)) {
     console.log(`\n⏰ Exact Time Match Hit: ${currentTimeIST} IST! Spawning publisher action...`);
     
-    // Executes the hourly publish command locally
-    exec("npm run worker:hourly-publish", (error, stdout, stderr) => {
+    // Executes the hourly publish command locally with a 20-minute timeout for massive batch processing
+    exec("HOURLY_PUBLISH_TIMEOUT_MS=1200000 npm run worker:hourly-publish", (error, stdout, stderr) => {
       if (stdout) console.log(`[PUBLISHER OUTPUT] ${stdout}`);
       if (stderr) console.error(`[PUBLISHER ERROR] ${stderr}`);
       if (error) console.error(`[CRITICAL] Publish Execution Failed: ${error}`);
