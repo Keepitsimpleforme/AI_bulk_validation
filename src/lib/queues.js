@@ -8,11 +8,14 @@ export const QUEUE_NAMES = {
 };
 
 export const rawBatchesQueue = new Queue(QUEUE_NAMES.RAW_BATCHES, {
-  connection: redisConnection
+  connection: redisConnection,
+  defaultJobOptions: { removeOnComplete: true, removeOnFail: 1000 }
 });
 export const validatedBatchesQueue = new Queue(QUEUE_NAMES.VALIDATED_BATCHES, {
-  connection: redisConnection
+  connection: redisConnection,
+  defaultJobOptions: { removeOnComplete: true, removeOnFail: 1000 }
 });
 export const deadLetterQueue = new Queue(QUEUE_NAMES.DEAD_LETTER, {
-  connection: redisConnection
+  connection: redisConnection,
+  defaultJobOptions: { removeOnComplete: true, removeOnFail: 1000 }
 });

@@ -70,8 +70,8 @@ export const validateBusinessRules = (product) => {
       product.attributes?.regulatory_data?.child?.fssai_lic?._no_ ??
       product.attributes?.regulatory_data?.child?.fssai_lic?._no_ ??
       product.attributes?.regulatory_data?.child?.fssai_lic?._no;
-    if (!hasValue(fssai) || String(fssai).length !== 14 || !String(fssai).startsWith("1")) {
-      reasons.push("FSSAI NUMBER: Should be of length 14 and should start with 1");
+    if (!hasValue(fssai) || String(fssai).length !== 14 || !/^[12]/.test(String(fssai))) {
+      reasons.push("FSSAI NUMBER: Should be of length 14 and should start with either 1 or 2");
     }
     if (!hasValue(product.attributes?.regulatory_data?.child?.food_type)) {
       reasons.push("food_type: Not Accepted");
