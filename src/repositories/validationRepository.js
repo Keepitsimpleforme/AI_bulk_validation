@@ -24,7 +24,16 @@ export const insertValidationResults = async (records) => {
 
   await db.query(
     `INSERT INTO validation_results(run_id, batch_id, gtin, validation_status, reasons, schema_valid, business_valid, product_snapshot)
-     VALUES ${placeholders}`,
+     VALUES ${placeholders}
+     ON CONFLICT (gtin) DO UPDATE SET 
+        run_id = EXCLUDED.run_id,
+        batch_id = EXCLUDED.batch_id,
+        validation_status = EXCLUDED.validation_status,
+        reasons = EXCLUDED.reasons,
+        schema_valid = EXCLUDED.schema_valid,
+        business_valid = EXCLUDED.business_valid,
+        product_snapshot = EXCLUDED.product_snapshot,
+        created_at = NOW()`,
     values
   );
 };
