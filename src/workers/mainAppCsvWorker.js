@@ -1,7 +1,5 @@
-/**
- * Sends today's validated data to the main use-case app as CSV (full column set).
- * Runs every hour (same cadence as hourly publish). POST body = CSV, Content-Type: text/csv.
- */
+// send today's validated data to the main app as full csv
+// runs every hour
 
 import axios from "axios";
 import { config } from "../config.js";

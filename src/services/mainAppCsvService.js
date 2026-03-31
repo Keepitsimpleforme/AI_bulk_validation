@@ -1,11 +1,8 @@
-/**
- * Build CSV for main use-case app with exact column set.
- * Each row: validation result + product snapshot (GS1 fields).
- */
+// build csv with the exact columns needed for the main app
 
 import { stringify } from "csv-stringify/sync";
 
-/** Main-app CSV columns in required order. */
+// required columns in order
 export const MAIN_APP_CSV_HEADERS = [
   "Company Name",
   "GTIN",
@@ -69,7 +66,7 @@ const get = (obj, path, def = "") => {
   return v === undefined || v === null ? def : String(v).trim();
 };
 
-/** Get value trying multiple keys (e.g. GS1 may use product_name or name). */
+// extract value using different possible keys
 const getAny = (obj, keys, def = "") => {
   if (obj == null) return def;
   for (const k of keys) {
@@ -81,16 +78,14 @@ const getAny = (obj, keys, def = "") => {
 
 const arrFirst = (arr) => (Array.isArray(arr) && arr.length > 0 ? arr[0] : null);
 
-/**
- * Map one DB row (gtin, validation_status, reasons, product_snapshot) to main-app CSV row object.
- */
+// format db row into the main app csv format
 export const rowToMainAppCsvRow = (row) => {
   const p = row.product_snapshot ?? {};
   const mrp = arrFirst(p.mrp) ?? {};
   const reasonStr = Array.isArray(row.reasons) ? row.reasons.join("; ") : String(row.reasons ?? "");
 
   const status = row.validation_status ?? "";
-  // GS1 API may use dashboard-style keys ("Company Name") or snake/camel (company_detail.name, companyName)
+  // gs1 keys can be dashboard style or camelCase
   return {
     "Company Name": getAny(p, ["Company Name", "company_detail.name", "company_name", "companyName"]),
     "AI Verified Status": status,
@@ -141,15 +136,13 @@ export const rowToMainAppCsvRow = (row) => {
     "Right Image": getAny(p, ["Right Image", "right_image"]) || get(p, "images.right"),
     "Left Image": getAny(p, ["Left Image", "left_image"]) || get(p, "images.left"),
     "Products Count": getAny(p, ["Products Count", "products_count"]),
-    // Legacy keys for dashboard compatibility (same payload for both)
+    // legacy keys to keep dashboard working
     GTIN_number: row.gtin ?? "",
     Status: status
   };
 };
 
-/**
- * Build full CSV string for main app (header + rows).
- */
+// combine headers and rows into a single csv string
 export const buildMainAppCsv = (rows) => {
   const csvRows = rows.map((row) => rowToMainAppCsvRow(row));
   return stringify(csvRows, {

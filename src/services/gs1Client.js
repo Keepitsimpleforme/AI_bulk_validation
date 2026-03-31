@@ -17,39 +17,33 @@ const isRetriableGs1Error = (error) => {
   return !status || status === 429 || (status >= 500 && status <= 599);
 };
 
-/**
- * Normalizes date input to YYYY-MM-DD format for GS1 API.
- * Handles both date strings (YYYY-MM-DD) and ISO timestamps (YYYY-MM-DDTHH:mm:ss.sssZ).
- * For timestamps, uses the local date (not UTC) to match user's timezone intent.
- */
+// fix dates to yyyy-mm-dd for gs1, adjusting timestamps to local time
 function normalizeDateForGs1(dateInput) {
   if (!dateInput) return dateInput;
   const str = String(dateInput);
-  // If it's already YYYY-MM-DD format, return as-is
+  // return straight away if format is correct
   if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
     return str;
   }
-  // If it's an ISO timestamp, parse it and use local date
-  // This handles cases where PostgreSQL DATE is read as UTC timestamp
-  // e.g., "2026-02-19T18:30:00.000Z" (2026-02-20 00:00 IST) -> "2026-02-20"
+  // parse iso stamps correctly to local timezone
   try {
     const d = new Date(str);
     if (!isNaN(d.getTime())) {
-      // Use local date components to preserve user's intended date
+      // pull local date pieces
       const year = d.getFullYear();
       const month = String(d.getMonth() + 1).padStart(2, '0');
       const day = String(d.getDate()).padStart(2, '0');
       return `${year}-${month}-${day}`;
     }
   } catch (e) {
-    // Ignore parse errors
+    // skip bad dates
   }
-  // Fallback: try to extract date part from string
+  // fallback extraction
   const dateMatch = str.match(/^(\d{4}-\d{2}-\d{2})/);
   if (dateMatch) {
     return dateMatch[1];
   }
-  return str; // Return original if we can't normalize
+  return str; // bail out
 }
 
 export const fetchGs1Page = async ({ status, from, to, resultPerPage, cursor }) => {
@@ -61,8 +55,7 @@ export const fetchGs1Page = async ({ status, from, to, resultPerPage, cursor }) 
     sortDir: "asc"
   };
   
-  // Date filters intentionally disabled for now per DQ team logic.
-  // We accept the args in case we re-enable them later, but do not pass them to the GS1 params.
+  // date filters turned off per dq team, keeping args just in case
   /*
   const fromDate = normalizeDateForGs1(from);
   let toDate = normalizeDateForGs1(to);
@@ -118,10 +111,7 @@ export const fetchGs1Page = async ({ status, from, to, resultPerPage, cursor }) 
   });
 };
 
-/**
- * Backfill variant: fetch all pending products in cursor mode,
- * sorted by modified_date ascending, without from/to date filters.
- */
+// fetch pending items for backfilling by oldest first
 export const fetchGs1BackfillPage = async ({ status, resultPerPage, cursor, from, to }) => {
   const params = {
     paginate: "cursor",

@@ -1,8 +1,4 @@
-/**
- * Publishes cumulative validated results for the day to dashboard and main app every hour.
- * Payload: { data: [ { "Company Name", "AI Verified Status", "AI Verified Reason", "GTIN", ... }, ... ] }
- * Full column set per row (same for both URLs).
- */
+// publish daily cumulative results to dashboard and main app every hour
 
 import axios from "axios";
 import { config } from "../config.js";
@@ -38,7 +34,7 @@ async function runHourlyPublish() {
   const dateKey = process.argv[2] || getTodayIST();
   const rows = await getValidationResultsForMainAppExport(dateKey);
 
-  // Deduplicate by GTIN: keep the row with the richest product_snapshot so we don't show "—" from duplicate runs
+  // dedup by gtin to keep the richest payload over blanks
   const byGtin = new Map();
   for (const row of rows) {
     const snapshot = row.product_snapshot;
@@ -66,7 +62,7 @@ async function runHourlyPublish() {
     return;
   }
 
-  // Chunk massive payloads to prevent 504 Gateway Timeouts on the dashboard
+  // chunk payloads to avoid dashboard 504 timeouts
   const CHUNK_SIZE = 5000;
   const chunks = [];
   for (let i = 0; i < data.length; i += CHUNK_SIZE) {
