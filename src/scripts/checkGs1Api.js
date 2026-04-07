@@ -56,6 +56,9 @@ async function main() {
     console.log("Items this page:", items.length);
     if (items.length > 0) {
       console.log("Sample keys:", Object.keys(items[0]).slice(0, 8).join(", "));
+      console.log("\n--- EXCLUSIVE API PAYLOAD DUMP ---");
+      console.log(JSON.stringify(items[5], null, 2));
+      console.log("----------------------------------\n");
     }
     console.log("\nGS1 API is returning data. Pipeline can fetch and validate.");
     process.exit(0);
