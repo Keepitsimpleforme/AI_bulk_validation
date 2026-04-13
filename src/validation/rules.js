@@ -50,6 +50,17 @@ const validateWeightsAndMeasures = (product, reportError) => {
   const netW = product.net_weight || packaging.net_weight?.child?.value;
   const netU = product.net_weight_unit || packaging.net_weight?.child?.unit;
 
+  // RULE 0: For unitized products, skip all gross/net validations.
+  if (netUnit === "each" || netUnit === "piece" || netUnit === "pieces" || netUnit === "nos") {
+    return;
+  }
+
+  // Gross/Net values and units are mandatory for acceptance.
+  if (!hasValue(grossW) || !hasValue(netW) || !hasValue(grossU) || !hasValue(netU)) {
+    reportError("weights_required", "Weights: Gross Weight, Net Weight and their units should all be provided");
+    return;
+  }
+
   // RULE 1: UNIT OF MEASUREMENT SHOULD BE THERE
   if (hasValue(netVal) && !hasValue(netUnit)) {
     reportError("net_content_unit", "Net Content Unit: Should be provided");
@@ -61,27 +72,49 @@ const validateWeightsAndMeasures = (product, reportError) => {
     reportError("net_weight_unit", "Net Weight Unit: Should be provided");
   }
   
-  // RULE 2: NET CONTENT could be different (each---> net weight gross weight may not be considered)
-  if (netUnit === "each" || netUnit === "piece" || netUnit === "pieces" || netUnit === "nos") {
-    return; // Completely bypass mathematical weight checking for single-item boxes!
-  }
-
-  // RULE 3: IN CASE OF GRAM AND KILOGRAM -> GROSS WEIGHT >= NET WEIGHT
-  const toGrams = (v, u) => {
+  // RULE 2: IN CASE OF MASS/VOLUME UNITS -> GROSS WEIGHT >= NET WEIGHT
+  const toComparableUnit = (v, u) => {
     let num = Number.parseFloat(v);
     if (!Number.isFinite(num)) return null;
     const strU = String(u || "").toLowerCase().trim();
-    if (strU === "kg" || strU === "kilogram" || strU === "kilograms") return num * 1000;
-    if (strU === "g" || strU === "gram" || strU === "grams") return num;
+    if (strU === "kg" || strU === "kilogram" || strU === "kilograms") {
+      return { dimension: "mass", value: num * 1000 };
+    }
+    if (strU === "g" || strU === "gram" || strU === "grams") {
+      return { dimension: "mass", value: num };
+    }
+    if (
+      strU === "l" ||
+      strU === "lt" ||
+      strU === "liter" ||
+      strU === "liters" ||
+      strU === "litre" ||
+      strU === "litres"
+    ) {
+      return { dimension: "volume", value: num * 1000 };
+    }
+    if (
+      strU === "ml" ||
+      strU === "milliliter" ||
+      strU === "milliliters" ||
+      strU === "millilitre" ||
+      strU === "millilitres"
+    ) {
+      return { dimension: "volume", value: num };
+    }
     return null;
   };
   
   if (hasValue(grossW) && hasValue(netW) && hasValue(grossU) && hasValue(netU)) {
-    const gGrams = toGrams(grossW, grossU);
-    const nGrams = toGrams(netW, netU);
+    const grossComparable = toComparableUnit(grossW, grossU);
+    const netComparable = toComparableUnit(netW, netU);
     
-    if (gGrams !== null && nGrams !== null) {
-      if (gGrams < nGrams) {
+    if (
+      grossComparable !== null &&
+      netComparable !== null &&
+      grossComparable.dimension === netComparable.dimension
+    ) {
+      if (grossComparable.value < netComparable.value) {
         reportError("weights", "Weights: Gross Weight must be mathematically greater than or equal to Net Weight");
       }
     }
@@ -116,7 +149,9 @@ export const validateBusinessRules = (product) => {
   validateWeightsAndMeasures(product, reportError);
 
   const firstMrp = product.mrp?.[0];
-  if (!hasValue(firstMrp?.mrp) || Number(firstMrp?.mrp) <= 0) {
+  const targetMarket = String(firstMrp?.target_market ?? "").trim().toLowerCase();
+  const isIndiaMarket = targetMarket === "india";
+  if (isIndiaMarket && (!hasValue(firstMrp?.mrp) || Number(firstMrp?.mrp) <= 0)) {
     reportError("mrp", "MRP: Should be not be null and be positive");
   }
   if (!hasValue(firstMrp?.target_market)) {
