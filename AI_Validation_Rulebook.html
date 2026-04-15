@@ -99,80 +99,78 @@
 <body>
 
   <h1>AI Bulk Validation - Rulebook</h1>
-  <p>This document precisely details every automated rule currently enforced by the AI validation system. If a product
-    metadata payload fails any of these programmed checks, the AI automatically assigns a <strong>Rejected</strong>
-    status.</p>
+  <p>This document reflects the current business-rule behavior in <code>src/validation/rules.js</code>. Any non-exempt
+    rule violation leads to <strong>Rejected</strong> status.</p>
 
-  <h2>1. Core Product Identification</h2>
-  <p>Every product must contain basic identifying details for database sync.</p>
+  <h2>1. Exemption Behavior</h2>
+  <p>Exemptions are active. If a rule key exists in <code>exempted_fields[*].fields</code>, that specific rejection
+    reason is skipped.</p>
   <ul>
-    <li><span class="rule-title">GTIN Number:</span> Cannot be blank. <br><span class="example">Example:
-        8901234567890</span></li>
-    <li><span class="rule-title">Brand Name:</span> Cannot be blank.</li>
-    <li><span class="rule-title">Product Name:</span> Cannot be blank.</li>
-    <li><span class="rule-title">Product Description:</span> Cannot be blank.</li>
-    <li><span class="rule-title">Company Name:</span> Cannot be blank.</li>
+    <li><span class="rule-title">Scope:</span> Exemptions work per rule key (for example <code>mrp</code>,
+      <code>target_market</code>, <code>weights</code>).</li>
+    <li><span class="rule-title">Effect:</span> Validation still runs, but exempted rule errors are not appended to
+      reasons.</li>
   </ul>
 
-  <h2>2. Categorization & Taxation</h2>
-  <p>The system strictly enforces category placement and tax codes for retail readiness.</p>
+  <h2>2. Core Product Fields</h2>
+  <p>These fields must be present and non-empty unless exempted:</p>
   <ul>
-    <li><span class="rule-title">Category:</span> Cannot be blank. <br><span class="example">Example: Food,
-        Electronics</span></li>
-    <li><span class="rule-title">Sub Category:</span> Cannot be blank.</li>
-    <li><span class="rule-title">HS Code (Harmonized System):</span> Cannot be blank.</li>
-    <li><span class="rule-title">IGST (Tax Rate):</span> Cannot be blank.</li>
+    <li><span class="rule-title">GTIN Number</span></li>
+    <li><span class="rule-title">Brand Name</span></li>
+    <li><span class="rule-title">Product Name</span></li>
+    <li><span class="rule-title">Product Description</span></li>
+    <li><span class="rule-title">Category</span></li>
+    <li><span class="rule-title">Sub Category</span></li>
+    <li><span class="rule-title">Company Name</span></li>
+    <li><span class="rule-title">HS Code</span></li>
+    <li><span class="rule-title">IGST</span></li>
   </ul>
 
-  <h2>3. Pricing & Market Information (MRP)</h2>
-  <p>The product must contain at least one valid pricing tier.</p>
+  <h2>3. Date Rules</h2>
+  <p>Dates are considered valid only in <code>YYYY-MM-DD</code> format:</p>
   <ul>
-    <li><span class="rule-title">MRP Value:</span> Must be greater than zero. It cannot be 0, negative, or blank.
-      <br><span class="example"><span class="valid">Valid:</span> 150.00 | <span class="invalid">Invalid:</span>
-        0.00</span>
-    </li>
-    <li><span class="rule-title">Target Market:</span> Cannot be blank.</li>
-    <li><span class="rule-title">MRP Location:</span> Cannot be blank.</li>
+    <li><span class="rule-title">Activation Date</span> (product level)</li>
+    <li><span class="rule-title">Deactivation Date</span> (product level)</li>
+    <li><span class="rule-title">MRP Activation Date</span> (first MRP row)</li>
   </ul>
 
-  <h2>4. Lifecycle Dates</h2>
-  <p>All dates must strictly follow the standard format: YYYY-MM-DD.</p>
+  <h2>4. MRP and Market Logic</h2>
+  <p>MRP checks are applied on the first MRP row: <code>product.mrp[0]</code>.</p>
   <ul>
-    <li><span class="rule-title">Activation Date:</span> Must be a valid date. <br><span class="example"><span
-          class="valid">Valid:</span> 2026-03-18 | <span class="invalid">Invalid:</span> 18-03-2026</span></li>
-    <li><span class="rule-title">Deactivation Date:</span> Must be a valid date.</li>
-    <li><span class="rule-title">MRP Activation Date:</span> Must be a valid date.</li>
+    <li><span class="rule-title">Target Market:</span> Mandatory.</li>
+    <li><span class="rule-title">MRP Location:</span> Mandatory.</li>
+    <li><span class="rule-title">MRP Activation Date:</span> Must be valid date.</li>
+    <li><span class="rule-title">Market-specific MRP value rule:</span> If <code>target_market = India</code>, MRP
+      value must be positive (> 0). If target market is non-India, MRP value is not mandatory.</li>
   </ul>
 
-  <h2>5. Weights and Measurements (Net Content)</h2>
-  <p>The Net Content format must strictly contain mathematical numbers. The system rejects text strings placed inside
-    numeric fields.</p>
+  <h2>5. Weights and Measures Logic</h2>
   <ul>
-    <li><span class="rule-title">Kilograms (kg) & Liters (l):</span> Must be a raw number. <strong>Rule:</strong> Cannot
-      exceed 3 digits in length. <br><span class="example"><span class="valid">Valid:</span> 1.5 | <span
-          class="invalid">Invalid:</span> 1000 (Should be 1 tonne)</span></li>
-    <li><span class="rule-title">Grams (g) & Milliliters (ml):</span> Must be a raw number. <br><span
-        class="example"><span class="valid">Valid:</span> 500 | <span class="invalid">Invalid:</span> 500g (Text letters
-        trigger math failure)</span></li>
+    <li><span class="rule-title">Unitized products bypass:</span> If net content unit is
+      <code>each</code>/<code>piece</code>/<code>pieces</code>/<code>nos</code>, all gross/net weight validations are skipped.</li>
+    <li><span class="rule-title">Otherwise mandatory:</span> <code>gross_weight</code>, <code>net_weight</code>,
+      <code>gross_weight_unit</code>, and <code>net_weight_unit</code> must all be provided.</li>
+    <li><span class="rule-title">Comparative rule:</span> Gross must be greater than or equal to net when both sides can
+      be converted and are in the same dimension.</li>
+    <li><span class="rule-title">Supported mass units:</span> <code>g</code>, <code>gram(s)</code>,
+      <code>kg</code>, <code>kilogram(s)</code>.</li>
+    <li><span class="rule-title">Supported volume units:</span> <code>ml</code>, <code>milliliter/millilitre</code>,
+      <code>l</code>, <code>lt</code>, <code>liter/litre</code>.</li>
+    <li><span class="rule-title">Non-comparable units:</span> If unit conversion is not supported or dimensions differ,
+      numeric gross-vs-net comparison is not applied.</li>
   </ul>
 
-  <h2>6. Food-Specific Regulations</h2>
-  <p><em>These rules are ONLY enforced if the product's "Category" is explicitly set to Food.</em></p>
+  <h2>6. Food-Specific Rules (Category = Food)</h2>
   <ul>
-    <li><span class="rule-title">FSSAI License Number:</span> Must be exactly 14 digits and legally begin with the
-      number 1. <br><span class="example"><span class="valid">Valid:</span> 12345678901234 | <span
-          class="invalid">Invalid:</span> 2345678901234</span></li>
-    <li><span class="rule-title">Food Type:</span> Cannot be blank. <br><span class="example">Example: Vegetarian,
-        Non-Vegetarian</span></li>
-    <li><span class="rule-title">Shelf Life Metrics:</span> Value, Unit, and Based On cannot be blank. <br><span
-        class="example">Example: 12, Months, From Date of Manufacture</span></li>
+    <li><span class="rule-title">FSSAI Number:</span> Required, length 14, must start with 1 or 2.</li>
+    <li><span class="rule-title">Food Type:</span> Required.</li>
+    <li><span class="rule-title">Shelf Life:</span> Value, unit, and based_on are all required.</li>
   </ul>
 
   <div class="note">
-    <strong>Developer Note: Missing Exemption Bypass</strong><br>
-    The AI codebase currently does not contain an override rule for "Exemptions". If a product is legally granted an
-    exemption for any of the fields above, the system will still forcefully reject it due to missing data. This requires
-    a pending bypass update to the AI architecture.
+    <strong>Implementation Note</strong><br>
+    This rulebook is aligned with runtime behavior in <code>src/validation/rules.js</code> and should be revised whenever
+    business-rule logic changes.
   </div>
 
 </body>
