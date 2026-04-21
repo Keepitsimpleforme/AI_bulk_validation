@@ -1,7 +1,7 @@
 import { config } from "../config.js";
 import { validatedBatchesQueue } from "../lib/queues.js";
 import { metrics } from "../lib/metrics.js";
-import { incrementRunCounters } from "../repositories/runRepository.js";
+import { incrementRunCounters, tryFinalizeRun } from "../repositories/runRepository.js";
 import { insertValidationResults } from "../repositories/validationRepository.js";
 import { appendToGtinsCsv, saveBatchValidationRecords } from "./gtinsCsvService.js";
 import { productSchema } from "../validation/schema.js";
@@ -68,6 +68,8 @@ export const processRawBatch = async (payload) => {
     accepted_count: accepted,
     rejected_count: rejected
   });
+  // Finalize when validation catches up with fetched count, even if delivery is disabled.
+  await tryFinalizeRun(payload.runId);
 
   metrics.validationItemsTotal.inc(normalizedRecords.length);
   metrics.validationAcceptedTotal.inc(accepted);
