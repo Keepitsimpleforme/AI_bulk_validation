@@ -12,6 +12,7 @@ import {
   updateOutboxRetry
 } from "../repositories/deliveryRepository.js";
 import { incrementRunCounters, tryFinalizeRun } from "../repositories/runRepository.js";
+import { rowToMainAppCsvRow } from "./mainAppCsvService.js";
 
 const deliveryClient = axios.create({
   timeout: config.downstream.timeoutMs
@@ -32,7 +33,16 @@ export const deliverValidatedBatch = async ({ runId, batchId, validatedRecords }
     logger.debug("DOWNSTREAM_URL not set; skipping delivery");
     return;
   }
-  const payload = { data: validatedRecords };
+  // Map internal records to main-app format so downstream sees "AI Verified Reason" with joined remarks
+  const data = validatedRecords.map((record) =>
+    rowToMainAppCsvRow({
+      gtin: record.gtin,
+      validation_status: record.validationStatus,
+      reasons: record.reasons,
+      product_snapshot: record.productSnapshot
+    })
+  );
+  const payload = { data };
 
   try {
     await withRetries({

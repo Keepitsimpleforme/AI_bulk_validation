@@ -55,23 +55,30 @@ const validateWeightsAndMeasures = (product, reportError) => {
     return;
   }
 
-  // Gross/Net values and units are mandatory for acceptance.
-  if (!hasValue(grossW) || !hasValue(netW) || !hasValue(grossU) || !hasValue(netU)) {
-    reportError("weights_required", "Weights: Gross Weight, Net Weight and their units should all be provided");
+  // RULE 1: Each mandatory weight/unit field gets its own specific rejection remark.
+  if (!hasValue(grossW)) {
+    reportError("gross_weight", "Gross Weight: Value is missing. Gross Weight must be provided.");
+  }
+  if (!hasValue(grossU)) {
+    reportError("gross_weight_unit", "Gross Weight Unit: Unit of measurement is missing. Gross Weight Unit (e.g. g, kg) must be provided.");
+  }
+  if (!hasValue(netW)) {
+    reportError("net_weight", "Net Weight: Value is missing. Net Weight must be provided.");
+  }
+  if (!hasValue(netU)) {
+    reportError("net_weight_unit", "Net Weight Unit: Unit of measurement is missing. Net Weight Unit (e.g. g, kg, ml, L) must be provided.");
+  }
+
+  // RULE 1a: Net Content unit from weights_and_measures
+  if (hasValue(netVal) && !hasValue(netUnit)) {
+    reportError("net_content_unit", "Net Content Unit: Unit of measurement is missing. Net Content has value '" + netVal + "' but no unit is specified.");
+  }
+
+  // If any mandatory field is missing, skip the comparison rule since it cannot be evaluated.
+  if (!hasValue(grossW) || !hasValue(grossU) || !hasValue(netW) || !hasValue(netU)) {
     return;
   }
 
-  // RULE 1: UNIT OF MEASUREMENT SHOULD BE THERE
-  if (hasValue(netVal) && !hasValue(netUnit)) {
-    reportError("net_content_unit", "Net Content Unit: Should be provided");
-  }
-  if (hasValue(grossW) && !hasValue(grossU)) {
-    reportError("gross_weight_unit", "Gross Weight Unit: Should be provided");
-  }
-  if (hasValue(netW) && !hasValue(netU)) {
-    reportError("net_weight_unit", "Net Weight Unit: Should be provided");
-  }
-  
   // RULE 2: IN CASE OF MASS/VOLUME UNITS -> GROSS WEIGHT >= NET WEIGHT
   const toComparableUnit = (v, u) => {
     let num = Number.parseFloat(v);
@@ -105,18 +112,16 @@ const validateWeightsAndMeasures = (product, reportError) => {
     return null;
   };
   
-  if (hasValue(grossW) && hasValue(netW) && hasValue(grossU) && hasValue(netU)) {
-    const grossComparable = toComparableUnit(grossW, grossU);
-    const netComparable = toComparableUnit(netW, netU);
-    
-    if (
-      grossComparable !== null &&
-      netComparable !== null &&
-      grossComparable.dimension === netComparable.dimension
-    ) {
-      if (grossComparable.value < netComparable.value) {
-        reportError("weights", "Weights: Gross Weight must be mathematically greater than or equal to Net Weight");
-      }
+  const grossComparable = toComparableUnit(grossW, grossU);
+  const netComparable = toComparableUnit(netW, netU);
+  
+  if (
+    grossComparable !== null &&
+    netComparable !== null &&
+    grossComparable.dimension === netComparable.dimension
+  ) {
+    if (grossComparable.value < netComparable.value) {
+      reportError("weights", "Gross Weight vs Net Weight: Gross Weight (" + grossW + " " + grossU + ") is less than Net Weight (" + netW + " " + netU + "). Gross Weight must be greater than or equal to Net Weight.");
     }
   }
 };
@@ -157,17 +162,21 @@ export const validateBusinessRules = (product) => {
   if (!hasValue(firstMrp?.target_market)) {
     reportError("target_market", "Target Market: Should be provided");
   }
-  if (!isValidDate(firstMrp?.activation_date)) {
+  // MRP Activation Date and Location are only mandatory for India market
+  if (isIndiaMarket && !isValidDate(firstMrp?.activation_date)) {
     reportError("mrp_activation_date", "MRP Activation Date: Should be provided or be valid");
   }
-  if (!hasValue(firstMrp?.location)) {
+  if (isIndiaMarket && !hasValue(firstMrp?.location)) {
     reportError("mrp_location", "MRP Location: Should be provided");
   }
 
   if (String(product.category ?? "").toLowerCase() === "food") {
+    const regChild = product.attributes?.regulatory_data?.child || {};
     const fssai =
-      product.attributes?.regulatory_data?.child?.fssai_lic?._no_ ??
-      product.attributes?.regulatory_data?.child?.fssai_lic?._no;
+      regChild["fssai_lic._no."] ??
+      regChild["fssai_lic._no"] ??
+      regChild.fssai_lic?._no_ ??
+      regChild.fssai_lic?._no;
       
     if (!hasValue(fssai) || String(fssai).length !== 14 || !/^[12]/.test(String(fssai))) {
       // Note the rulekey physically matches the exact GS1 string 'fssai_lic._no.'

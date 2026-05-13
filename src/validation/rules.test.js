@@ -32,8 +32,10 @@ const base = {
     }
   },
   weights_and_measures: {
-    measurement_unit: "60",
-    net_content: "each"
+    measurement_unit: "each",
+    net_content: "60 each",
+    gross_weight: "600",
+    net_weight: "500"
   },
   dimensions: {
     measurement_unit: "",
@@ -41,10 +43,7 @@ const base = {
     width: null,
     depth: null
   },
-  gross_weight: "600",
-  gross_weight_unit: "g",
-  net_weight: "500",
-  net_weight_unit: "g",
+
   case_configuration: [],
   mrp: [
     {
@@ -95,8 +94,10 @@ export const baseFood = {
     }
   },
   weights_and_measures: {
-    measurement_unit: "250",
-    net_content: "g"
+    measurement_unit: "g",
+    net_content: "250 g",
+    gross_weight: "300",
+    net_weight: "250"
   },
   dimensions: {
     measurement_unit: "",
@@ -104,10 +105,7 @@ export const baseFood = {
     width: null,
     depth: null
   },
-  gross_weight: "300",
-  gross_weight_unit: "g",
-  net_weight: "250",
-  net_weight_unit: "g",
+
   case_configuration: [],
   mrp: [
     {
@@ -208,8 +206,10 @@ test("rejects when gross volume is less than net volume", () => {
   const result = validateBusinessRules({
     ...base,
     weights_and_measures: {
-      measurement_unit: "100",
-      net_content: "ml"
+      measurement_unit: "ml",
+      net_content: "100 ml",
+      gross_weight: "1",
+      net_weight: "1200"
     },
     gross_weight: "1",
     gross_weight_unit: "L",
@@ -217,31 +217,31 @@ test("rejects when gross volume is less than net volume", () => {
     net_weight_unit: "ml"
   });
   assert.equal(result.status, "Rejected");
-  assert.ok(result.reasons.some((reason) => reason.includes("Weights:")));
+  assert.ok(result.reasons.some((reason) => reason.includes("Gross Weight vs Net Weight:")));
 });
 
 test("rejects when any gross/net value or unit is missing", () => {
   const result = validateBusinessRules({
     ...base,
     weights_and_measures: {
-      measurement_unit: "100",
-      net_content: "g"
+      measurement_unit: "g",
+      net_content: "100 g",
+      gross_weight: "100",
+      net_weight: "80"
     },
-    gross_weight: "100",
     gross_weight_unit: "",
-    net_weight: "80",
     net_weight_unit: "g"
   });
   assert.equal(result.status, "Rejected");
-  assert.ok(result.reasons.some((reason) => reason.includes("should all be provided")));
+  assert.ok(result.reasons.some((reason) => reason.includes("Gross Weight Unit: Unit of measurement is missing")));
 });
 
 test("allows missing gross/net fields when net content unit is each", () => {
   const result = validateBusinessRules({
     ...base,
     weights_and_measures: {
-      measurement_unit: "10",
-      net_content: "each"
+      measurement_unit: "each",
+      net_content: "10 each"
     },
     gross_weight: "",
     gross_weight_unit: "",
@@ -249,5 +249,5 @@ test("allows missing gross/net fields when net content unit is each", () => {
     net_weight_unit: "g"
   });
   assert.equal(result.status, "Accepted");
-  assert.ok(!result.reasons.some((reason) => reason.includes("should all be provided")));
+  assert.ok(!result.reasons.some((reason) => reason.includes("Gross Weight")));
 });
