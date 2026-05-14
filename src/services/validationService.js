@@ -32,7 +32,12 @@ export const processRawBatch = async (payload) => {
       continue;
     }
 
-    const business = validateBusinessRules(schemaResult.data);
+    // Pass the normalized item — NOT schemaResult.data — to the business rules.
+    // Zod strips undeclared keys, which would remove gross_weight/net_weight
+    // (lifted by normalize), `attributes` (FSSAI/shelf_life), and
+    // `exempted_fields` (exemption engine). The schema check above is purely
+    // a gate; the canonical product shape lives in normalizeProduct.
+    const business = validateBusinessRules(normalizedItem);
     const isAccepted = business.status === "Accepted";
     if (isAccepted) accepted += 1;
     else rejected += 1;
@@ -40,7 +45,7 @@ export const processRawBatch = async (payload) => {
     normalizedRecords.push({
       runId: payload.runId,
       batchId: payload.batchId,
-      gtin: schemaResult.data.gtin,
+      gtin: normalizedItem.gtin,
       validationStatus: business.status,
       reasons: business.reasons,
       schemaValid: true,

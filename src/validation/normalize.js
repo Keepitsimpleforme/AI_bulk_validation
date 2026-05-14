@@ -15,7 +15,8 @@ const parseNetContent = (netContent) => {
 
 export const normalizeProduct = (raw) => {
   const product = { ...raw };
-  product.gtin = product.gtin !== undefined && product.gtin !== null ? String(product.gtin) : "";
+  product.gtin =
+    product.gtin !== undefined && product.gtin !== null ? String(product.gtin).trim() : "";
 
   const wm = product.weights_and_measures || {};
 

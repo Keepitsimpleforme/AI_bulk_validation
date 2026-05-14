@@ -4,15 +4,16 @@ import { validateBusinessRules } from "./rules.js";
 import { normalizeProduct } from "./normalize.js";
 import { productSchema } from "./schema.js";
 
-// Mirrors validationService.js: normalize → schema parse → business rules.
-// Guards against the schema silently stripping fields the rules depend on.
+// Mirrors validationService.js: normalize → schema gate → business rules.
+// The schema is used only as a yes/no gate; the rules read from the
+// normalized object directly so they see every field normalize lifted.
 const runFullPipeline = (raw) => {
   const normalized = normalizeProduct(raw);
   const parsed = productSchema.safeParse(normalized);
   if (!parsed.success) {
     return { status: "SchemaInvalid", reasons: ["Schema validation failed"] };
   }
-  return validateBusinessRules(parsed.data);
+  return validateBusinessRules(normalized);
 };
 
 const base = {

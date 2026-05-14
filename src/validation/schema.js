@@ -1,5 +1,12 @@
 import { z } from "zod";
 
+// productSchema is used as a structural gate in validationService.js:
+// `safeParse(...).success` decides whether an item is schema-valid (has gtin
+// and activation_date). Downstream business rules read from the normalized
+// object directly — not from schemaResult.data — so we don't list every field
+// the rules care about here. Do NOT pass schemaResult.data into the rules:
+// any unknown keys (gross_weight, attributes, exempted_fields, ...) would be
+// stripped and break the rule evaluation.
 const nonEmptyString = z.coerce.string().trim().min(1);
 
 export const productSchema = z.object({
@@ -37,4 +44,4 @@ export const productSchema = z.object({
     )
     .optional()
     .default([])
-}).passthrough();
+});
