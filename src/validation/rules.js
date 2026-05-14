@@ -9,13 +9,20 @@ const hasValue = (value) => {
 
 const toNumber = (value) => Number.parseFloat(String(value));
 
-// ─── EXEMPTION ENGINE BUILER ───
+// ─── EXEMPTION ENGINE BUILDER ───
+// Accepts two shapes for product.exempted_fields:
+//   1. Flat array of strings (current GS1 API):  ["gross_weight", "fssai_lic._no."]
+//   2. Legacy group-object array:                 [{ fields: ["gross_weight", ...] }]
 const buildExemptedSet = (product) => {
   const set = new Set();
   const arr = product.exempted_fields || [];
-  for (const group of arr) {
-    if (Array.isArray(group.fields)) {
-      for (const field of group.fields) {
+  for (const entry of arr) {
+    if (typeof entry === "string") {
+      set.add(entry.trim().toLowerCase());
+      continue;
+    }
+    if (entry && Array.isArray(entry.fields)) {
+      for (const field of entry.fields) {
         set.add(String(field).trim().toLowerCase());
       }
     }

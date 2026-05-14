@@ -301,7 +301,7 @@ test("pipeline: preserves attributes so food-category FSSAI and shelf_life rules
   );
 });
 
-test("pipeline: preserves exempted_fields so the exemption engine works", () => {
+test("pipeline: exemption engine accepts the GS1 API shape (flat array of strings)", () => {
   const raw = {
     ...base,
     gross_weight: undefined,
@@ -313,6 +313,27 @@ test("pipeline: preserves exempted_fields so the exemption engine works", () => 
       net_content: "250 g"
       // weights deliberately omitted — would normally reject
     },
+    exempted_fields: ["gross_weight", "gross_weight_unit", "net_weight", "net_weight_unit"]
+  };
+  const result = runFullPipeline(raw);
+  assert.equal(
+    result.status,
+    "Accepted",
+    `Flat-string exemption should suppress weight errors; got reasons: ${JSON.stringify(result.reasons)}`
+  );
+});
+
+test("pipeline: exemption engine still accepts the legacy group-object shape", () => {
+  const raw = {
+    ...base,
+    gross_weight: undefined,
+    gross_weight_unit: undefined,
+    net_weight: undefined,
+    net_weight_unit: undefined,
+    weights_and_measures: {
+      measurement_unit: "g",
+      net_content: "250 g"
+    },
     exempted_fields: [
       { fields: ["gross_weight", "gross_weight_unit", "net_weight", "net_weight_unit"] }
     ]
@@ -321,7 +342,7 @@ test("pipeline: preserves exempted_fields so the exemption engine works", () => 
   assert.equal(
     result.status,
     "Accepted",
-    `Exemption should suppress weight errors; got reasons: ${JSON.stringify(result.reasons)}`
+    `Legacy nested exemption should still suppress weight errors; got reasons: ${JSON.stringify(result.reasons)}`
   );
 });
 
