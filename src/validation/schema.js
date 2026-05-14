@@ -37,4 +37,4 @@ export const productSchema = z.object({
     )
     .optional()
     .default([])
-});
+}).passthrough();

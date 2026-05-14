@@ -1,6 +1,19 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { validateBusinessRules } from "./rules.js";
+import { normalizeProduct } from "./normalize.js";
+import { productSchema } from "./schema.js";
+
+// Mirrors validationService.js: normalize → schema parse → business rules.
+// Guards against the schema silently stripping fields the rules depend on.
+const runFullPipeline = (raw) => {
+  const normalized = normalizeProduct(raw);
+  const parsed = productSchema.safeParse(normalized);
+  if (!parsed.success) {
+    return { status: "SchemaInvalid", reasons: ["Schema validation failed"] };
+  }
+  return validateBusinessRules(parsed.data);
+};
 
 const base = {
   brand: "ANNAI ARAVINDH HERBALS PVT LTD",
@@ -250,4 +263,82 @@ test("allows missing gross/net fields when net content unit is each", () => {
   });
   assert.equal(result.status, "Accepted");
   assert.ok(!result.reasons.some((reason) => reason.includes("Gross Weight")));
+});
+
+// ─── FULL PIPELINE TESTS (normalize → schema → rules) ───
+// These mirror the production path in validationService.js and guard against
+// the schema stripping fields the rules depend on.
+
+test("pipeline: accepts product with weights nested in weights_and_measures (GS1 modern shape)", () => {
+  const raw = {
+    ...base,
+    gross_weight: undefined,
+    gross_weight_unit: undefined,
+    net_weight: undefined,
+    net_weight_unit: undefined,
+    weights_and_measures: {
+      measurement_unit: "g",
+      net_content: "250 g",
+      gross_weight: "300",
+      net_weight: "250"
+    }
+  };
+  const result = runFullPipeline(raw);
+  assert.equal(
+    result.status,
+    "Accepted",
+    `Expected Accepted, got ${result.status} with reasons: ${JSON.stringify(result.reasons)}`
+  );
+});
+
+test("pipeline: preserves attributes so food-category FSSAI and shelf_life rules can read them", () => {
+  const result = runFullPipeline(baseFood);
+  assert.equal(
+    result.status,
+    "Accepted",
+    `Food product with valid FSSAI/shelf_life should pass; got reasons: ${JSON.stringify(result.reasons)}`
+  );
+});
+
+test("pipeline: preserves exempted_fields so the exemption engine works", () => {
+  const raw = {
+    ...base,
+    gross_weight: undefined,
+    gross_weight_unit: undefined,
+    net_weight: undefined,
+    net_weight_unit: undefined,
+    weights_and_measures: {
+      measurement_unit: "g",
+      net_content: "250 g"
+      // weights deliberately omitted — would normally reject
+    },
+    exempted_fields: [
+      { fields: ["gross_weight", "gross_weight_unit", "net_weight", "net_weight_unit"] }
+    ]
+  };
+  const result = runFullPipeline(raw);
+  assert.equal(
+    result.status,
+    "Accepted",
+    `Exemption should suppress weight errors; got reasons: ${JSON.stringify(result.reasons)}`
+  );
+});
+
+test("pipeline: still rejects when weights are genuinely missing and unit is not 'each'", () => {
+  const raw = {
+    ...base,
+    gross_weight: undefined,
+    gross_weight_unit: undefined,
+    net_weight: undefined,
+    net_weight_unit: undefined,
+    weights_and_measures: {
+      measurement_unit: "g",
+      net_content: "250 g"
+      // no gross/net weights anywhere
+    }
+  };
+  const result = runFullPipeline(raw);
+  assert.equal(result.status, "Rejected");
+  assert.ok(result.reasons.some((r) => r.includes("Gross Weight")));
+  assert.ok(result.reasons.some((r) => r.includes("Net Weight")));
 });
